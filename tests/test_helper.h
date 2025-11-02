@@ -5,8 +5,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "common/utf8_helper.h"
-
 #define TEST_CHECK_EQUAL(val, exp, format, name) \
     do { \
         TEST_CHECK((val) == (exp)); \
