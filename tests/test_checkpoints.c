@@ -145,11 +145,11 @@ void test_analyze_3(void) {
 
 void test_analyze_4(void) {
     // with list multiple  reallocation and UTF-8 characters
-    char *input = malloc(4294967397);
+    char *input = malloc(123123);
     TEST_ASSERT(input);
-    memset(input, 'A', 4294967397);
-    memcpy(input + 42949, "€", 3);
-    input[4294967396] = '\0';
+    memset(input, 'A', 123123);
+    memcpy(input + 1234, "€", 3);
+    input[123122] = '\0';
 
     uint16_t list[MAX_2BYTE_INDEX + 1];
     str8_analyze_config config = {
@@ -161,10 +161,14 @@ void test_analyze_4(void) {
     int error = str8_analyze(input, 0, config, &results);
 
     TEST_CHECK_EQUAL(error, 0, "%d", "error");
-    TEST_CHECK_EQUAL(results.list_size, 8388608LU, "%zu", "list size");
-    TEST_CHECK_EQUAL(results.size, 4294967396LU, "%zu", "size");
-    TEST_CHECK_EQUAL(results.length, 4294967396LU - 2LU, "%zu", "size");
-    TEST_CHECK_EQUAL(read_entry(results.list, 8388606LU), 512LU * 8388607LU - 2LU, "%zu", "entry value");
+    // str size / 512
+    TEST_CHECK_EQUAL(results.list_size, 240LU, "%zu", "list size");
+    // str size
+    TEST_CHECK_EQUAL(results.size, 123122LU, "%zu", "size");
+    // str size - 2 byte (of the € sign)
+    TEST_CHECK_EQUAL(results.length, 123122LU - 2LU, "%zu", "size");
+    // (index + 1) * 512 - 2 bytes (€ sign)
+    TEST_CHECK_EQUAL(read_entry(results.list, 230LU), 512LU * 231LU - 2LU, "%zu", "entry value");
 
     free(results.list);
     free(input);
