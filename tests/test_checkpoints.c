@@ -87,14 +87,16 @@ void test_analyze_1(void) {
 
     TEST_CHECK_EQUAL(error, 0, "%d", "error");
     TEST_CHECK_EQUAL(results.list_size, 2LU, "%zu", "list size");
+    TEST_CHECK_EQUAL(results.size, 1299LU, "%zu", "size");
+    TEST_CHECK_EQUAL(results.length, 1299LU, "%zu", "length");
 }
 
 void test_analyze_2(void) {
     // with list reallocation
     // more than MAX_2BYTE_INDEX / CHECKPOINTS_GRANULARITY entries are needed
     // 66000 / 512 = 128.9xx = 128 entries
-    char input[66000];
-    memset(input, 'A', 66000);
+    char input[66001];
+    memset(input, 'A', 66001);
     input[66000] = '\0';
 
     uint16_t list[MAX_2BYTE_INDEX + 1];
@@ -108,6 +110,64 @@ void test_analyze_2(void) {
 
     TEST_CHECK_EQUAL(error, 0, "%d", "error");
     TEST_CHECK_EQUAL(results.list_size, 128LU, "%zu", "list size");
+
+    free(results.list);
+}
+
+
+void test_analyze_3(void) {
+    // with list reallocation
+    // more than MAX_2BYTE_INDEX / CHECKPOINTS_GRANULARITY entries are needed
+    // 66000 / 512 = 128.9xx = 128 entries
+    char *input = malloc(4294967397);
+    TEST_ASSERT(input);
+    memset(input, 'A', 4294967397);
+    input[4294967396] = '\0';
+
+    uint16_t list[MAX_2BYTE_INDEX + 1];
+    str8_analyze_config config = {
+        .list = list,
+        .list_capacity = MAX_2BYTE_INDEX + 1,
+        .byte_offset = 0
+    };
+    str8_analyze_results results;
+    int error = str8_analyze(input, 0, config, &results);
+
+    TEST_CHECK_EQUAL(error, 0, "%d", "error");
+    TEST_CHECK_EQUAL(results.list_size, 8388608LU, "%zu", "list size");
+    TEST_CHECK_EQUAL(results.size, 4294967396LU, "%zu", "size");
+    TEST_CHECK_EQUAL(results.length, 4294967396LU, "%zu", "size");
+    TEST_CHECK_EQUAL(read_entry(results.list, 8388606LU), 512LU * 8388607LU, "%zu", "entry value");
+
+    free(results.list);
+    free(input);
+}
+
+void test_analyze_4(void) {
+    // with list multiple  reallocation and UTF-8 characters
+    char *input = malloc(4294967397);
+    TEST_ASSERT(input);
+    memset(input, 'A', 4294967397);
+    memcpy(input + 42949, "€", 3);
+    input[4294967396] = '\0';
+
+    uint16_t list[MAX_2BYTE_INDEX + 1];
+    str8_analyze_config config = {
+        .list = list,
+        .list_capacity = MAX_2BYTE_INDEX + 1,
+        .byte_offset = 0
+    };
+    str8_analyze_results results;
+    int error = str8_analyze(input, 0, config, &results);
+
+    TEST_CHECK_EQUAL(error, 0, "%d", "error");
+    TEST_CHECK_EQUAL(results.list_size, 8388608LU, "%zu", "list size");
+    TEST_CHECK_EQUAL(results.size, 4294967396LU, "%zu", "size");
+    TEST_CHECK_EQUAL(results.length, 4294967396LU - 2LU, "%zu", "size");
+    TEST_CHECK_EQUAL(read_entry(results.list, 8388606LU), 512LU * 8388607LU - 2LU, "%zu", "entry value");
+
+    free(results.list);
+    free(input);
 }
 
 TEST_LIST = {
@@ -115,5 +175,7 @@ TEST_LIST = {
     { "Checkpoints List Pointer", test_checkpoints_list },
     { "Analyze 1", test_analyze_1 },
     { "Analyze 2", test_analyze_2 },
+    { "Analyze 3", test_analyze_3 },
+    { "Analyze 4", test_analyze_4 },
     { NULL, NULL }
 };
