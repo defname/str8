@@ -25,8 +25,9 @@ STATIC INLINE size_t checkpoints_entry_offset(size_t idx) {
  */
 STATIC INLINE void *checkpoints_list(str8 str) {
     uint8_t type = STR8_TYPE(str);
-    size_t max_idx = str8cap(str)/CHECKPOINTS_GRANULARITY;
-    size_t table_bytesize = checkpoints_entry_offset(max_idx + 1);
+    size_t table_count = str8cap(str)/CHECKPOINTS_GRANULARITY;
+    // the list contains an entry for each TABLE_GRANULARITY bytes
+    size_t table_bytesize = checkpoints_entry_offset(table_count);
     return ((char*)str) - (1 + 3 * STR8_FIELD_SIZE(type)) - table_bytesize;
 }
 
@@ -124,6 +125,10 @@ uint8_t str8_analyze(
             list_pointer = results->list + checkpoints_entry_offset(results->list_size);
         }
 
+        if (chunk_size < max_chunk_size) {  // NULL byte was found in chunk
+            break;
+        }
+
         if (idx <= MAX_2BYTE_INDEX) {
             *(uint16_t*)list_pointer = (uint16_t)results->length;
             list_pointer += sizeof(uint16_t);
@@ -136,11 +141,7 @@ uint8_t str8_analyze(
             *(uint64_t*)list_pointer = (uint64_t)results->length;
             list_pointer += sizeof(uint64_t);
         }
-        results->list_size++;
-
-        if (chunk_size < max_chunk_size) {  // NULL byte was found in chunk
-            break;
-        }
+        results->list_size++; 
     }
 
     return 0;
