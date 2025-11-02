@@ -1,5 +1,8 @@
 # Finde alle Testdateien
-file(GLOB TEST_SOURCES "test_*.c" "bench_*.c")
+file(GLOB TEST_SOURCES "test_*.c")
+
+file(GLOB BENCH_SOURCES "bench_*.c")
+
 
 # Durch jede gefundene Testdatei loopen
 foreach(TEST_SOURCE_FILE ${TEST_SOURCES})
@@ -12,5 +15,12 @@ foreach(TEST_SOURCE_FILE ${TEST_SOURCES})
 
     # Den Test zu CTest hinzufügen, damit er mit `ctest` ausgeführt werden kann
     add_test(NAME ${TEST_NAME} COMMAND $<TARGET_FILE:${TEST_NAME}>)
+endforeach()
+
+foreach(BENCH_SOURCE_FILE ${BENCH_SOURCES})
+    get_filename_component(BENCH_NAME ${BENCH_SOURCE_FILE} NAME_WE)
+
+    add_executable(${BENCH_NAME} ${BENCH_SOURCE_FILE})
+    target_link_libraries(${BENCH_NAME} PRIVATE str8)
 
 endforeach()
