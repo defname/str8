@@ -89,9 +89,13 @@ uint8_t str8_analyze(
     void *list_pointer = results->list;
 
     for (;;) {
-        size_t max_chunk_size = max_bytes == 0 || results->size + CHECKPOINTS_GRANULARITY < max_bytes
-            ? CHECKPOINTS_GRANULARITY - config.byte_offset
-            : max_bytes - results->size - config.byte_offset;
+        size_t max_chunk_size = CHECKPOINTS_GRANULARITY - config.byte_offset;
+        if (max_bytes != 0) {
+            size_t remaining = results->size >= max_bytes ? 0 : max_bytes - results->size;
+            if (remaining < max_chunk_size) {
+                max_chunk_size = remaining;
+            }
+        }
         
         // this is needed only for the first iteration
         config.byte_offset = 0;
