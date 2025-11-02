@@ -57,15 +57,10 @@ endif()
 
 add_compile_definitions(_XOPEN_SOURCE=700)
 
-# --- Bibliotheken und Unterverzeichnisse ---
-
-add_subdirectory(common)
-
-
 file(GLOB_RECURSE str8_SRC CONFIGURE_DEPENDS "src/*.c" "src/*/*.c")
 
 add_library(str8 STATIC ${str8_SRC})
-target_link_libraries(str8 PRIVATE utf8_helper)
+# target_link_libraries(str8 PRIVATE utf8_helper)
 target_include_directories(str8 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 
@@ -75,6 +70,3 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     # --- Add tests ---
     add_subdirectory(tests)
 endif()
-
-# --- Add tools ---
-add_subdirectory(research)
