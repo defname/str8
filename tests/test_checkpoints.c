@@ -209,12 +209,21 @@ void test_read_write(void) {
     free(results.list);
 }
 
+#ifdef SKIP_LARGE_MEMORY_TESTS
+void dummy(void) {
+}
+#endif
+
 TEST_LIST = {
     { "Checkpoints Entry Offset", test_checkpoints_entry_offset },
     { "Checkpoints List Pointer", test_checkpoints_list },
     { "Analyze 1", test_analyze_1 },
     { "Analyze 2", test_analyze_2 },
+#ifdef SKIP_LARGE_MEMORY_TESTS
+    { "Analyze 3 -- skipped", dummy },
+#else
     { "Analyze 3", test_analyze_3 },
+#endif
     { "Analyze 4", test_analyze_4 },
     { "Read Write", test_read_write },
     { NULL, NULL }
