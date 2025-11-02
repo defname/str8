@@ -1,5 +1,7 @@
 # str8 - UTF-8 friendly string library
 
+Work in progress...
+
 ## Goals
 
 - Minimal overhead
