@@ -1,11 +1,9 @@
 /**
- * The checkpoints list is located before the actual header of the str8.
- * It's entries are in reversed order.
- * 
- *          checkpoints list  -->|
- * ...---------------------------+--------------+------------...
- *    ... #4 | #3 | #2 | #1 | #0 | str8 header  | string ...
- * ...---------------------------+--------------+------------...
+ * @file str8_checkpoints.h
+ * @brief Manages the variable-size checkpoints list.
+ *
+ * The checkpoints list is a packed data structure where each entry's size
+ * (uint16_t, uint32_t, or uint64_t) depends on its index.
  */
 #ifndef STR8_CHECKPOINTS_H
 #define STR8_CHECKPOINTS_H
