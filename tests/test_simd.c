@@ -2,8 +2,9 @@
 
 #include "acutest.h"
 #include "test_helper.h"
-#include <string.h>  // strnlen()
 #include <stdlib.h>   // rand(), srand()
+#include <stdbool.h>  // bool
+#include <string.h>  // strnlen()
 #include <time.h>  // time()
 
 #include "src/str8_simd.h"
