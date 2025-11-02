@@ -81,21 +81,38 @@ uint8_t str8_analyze(
     results->length = 0;
     results->list_created = false;
 
+    // The byteoffset is used if the list is created for a string that is
+    // appended to another string. So the the first table entry should
+    // be created earlier, in a way it matches CHECKPOINTS_GRANULARITY
+    config.byte_offset %= CHECKPOINTS_GRANULARITY;
+
     void *list_pointer = results->list;
 
     for (;;) {
         size_t max_chunk_size = max_bytes == 0 || results->size + CHECKPOINTS_GRANULARITY < max_bytes
-            ? CHECKPOINTS_GRANULARITY
-            : max_bytes - results->size;
+            ? CHECKPOINTS_GRANULARITY - config.byte_offset
+            : max_bytes - results->size - config.byte_offset;
         
+        // this is needed only for the first iteration
+        config.byte_offset = 0;
+
+        // max_bytes was reached
         if (max_chunk_size == 0) {
             break;
         }
         
+        // count size and length of the chunk
         size_t chunk_size = str8_size_simd(str + results->size, max_chunk_size);
         size_t chunk_len = str8_count_chars_simd(str + results->size, chunk_size);
+
+        // update the results
         results->size += chunk_size;
         results->length += chunk_len;
+
+        // quit if the end was reached (no other list entry necessary)
+        if (chunk_size < max_chunk_size) {  // NULL byte was found in chunk
+            break;
+        }
 
         size_t idx = results->list_size;
 
@@ -127,10 +144,7 @@ uint8_t str8_analyze(
             list_pointer = results->list + checkpoints_entry_offset(results->list_size);
         }
 
-        if (chunk_size < max_chunk_size) {  // NULL byte was found in chunk
-            break;
-        }
-
+        // append the list
         if (idx <= MAX_2BYTE_INDEX) {
             *(uint16_t*)list_pointer = (uint16_t)results->length;
             list_pointer += sizeof(uint16_t);
