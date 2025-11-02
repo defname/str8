@@ -25,6 +25,22 @@ STATIC INLINE size_t get_field(void *field, uint8_t type) {
     }
 }
 
+/** @brief Check if the value is in range for type */
+STATIC INLINE bool value_in_range(uint8_t type, size_t value) {
+    switch (type) {
+        case STR8_TYPE0:
+            return value < (1 << 5);
+        case STR8_TYPE1:
+            return value <= UINT8_MAX;
+        case STR8_TYPE2:
+            return value <= UINT16_MAX;
+        case STR8_TYPE4:
+            return value <= UINT32_MAX;
+        default:
+            return true;
+    }
+}
+
 /**
  * @brief Set the content of a header field.
  * 
@@ -33,6 +49,9 @@ STATIC INLINE size_t get_field(void *field, uint8_t type) {
  * @param value Value to write to the field.
  */
 STATIC INLINE void set_field(void *field, uint8_t type, size_t value) {
+#ifdef DEBUG
+    assert(value_in_range(type, value));
+#endif
     switch (type) {
         case STR8_TYPE1:
             *(uint8_t*)field = (uint8_t)value;
@@ -51,17 +70,18 @@ STATIC INLINE void set_field(void *field, uint8_t type, size_t value) {
     }
 }
 
-/** @brief Return a pointer to the length field in the header of str. */
+/** @brief Return a pointer to the length field in the header of str (not for type 0!!!). */
 STATIC INLINE void *len_field(str8 str, uint8_t type) {
     return ((char*)str) - (1 + 3 * STR8_FIELD_SIZE(type));
 }
 
-/** @brief Return a pointer to the size field in the header of str. */
+/**
+ * @brief Return a pointer to the size field in the header of str (not for type 0!!!). */
 STATIC INLINE void *size_field(str8 str, uint8_t type) {
     return ((char*)str) - (1 + STR8_FIELD_SIZE(type));
 }
 
-/** @brief Return a pointer to the capacity field in the header of str. */
+/** @brief Return a pointer to the capacity field in the header of str (not for type 0!!!). */
 STATIC INLINE void *cap_field(str8 str, uint8_t type) {
     return ((char*)str) - (1 + 2 * STR8_FIELD_SIZE(type));
 }
@@ -75,7 +95,7 @@ size_t str8len(str8 str) {
         return str8size(str);
     }
     void *field = len_field(str, type);
-    get_field(field, type);
+    return get_field(field, type);
 }
 
 size_t str8size(str8 str) {
@@ -108,7 +128,7 @@ void str8setlen(str8 str, size_t length) {
 void str8setsize(str8 str, size_t size) {
     uint8_t type = STR8_TYPE(str);
     if (type == STR8_TYPE0) {
-        ((uint8_t*)str)[-1] = (size << 3) | 0x01;
+        ((uint8_t*)str)[-1] = (((uint8_t)size) << 3);  // type is 0
         return;
     }
     void *field = size_field(str, type);
