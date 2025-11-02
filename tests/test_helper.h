@@ -10,13 +10,13 @@
 #define TEST_CHECK_EQUAL(val, exp, format, name) \
     do { \
         TEST_CHECK((val) == (exp)); \
-        TEST_MSG("Expected %s to be "format", but got "format, name, exp, val); \
+        TEST_MSG("Expected %s to be "format", but got "format, (name), (exp), (val)); \
     } while (0);
 
 #define TEST_CHECK_STR(val, exp) \
     do { \
         TEST_CHECK(strcmp((val), (exp)) == 0); \
-        TEST_MSG("Expected to be \"%s\", but got \"%s\"", exp, val); \
+        TEST_MSG("Expected to be \"%s\", but got \"%s\"", (exp), (val)); \
     } while (0);
 
 
