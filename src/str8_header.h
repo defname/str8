@@ -10,8 +10,8 @@
 #define STR8_TYPE4  3
 #define STR8_TYPE8  4
 
-#define STR8_TYPE(str) (((char*)(str))[-1] & 0x03)
-#define STR8_IS_ASCII(str) !!(((char*)(str))[-1] & 0x80)
+#define STR8_TYPE(str) (((unsigned char*)(str))[-1] & 0x07)  // 0b00000111
+#define STR8_IS_ASCII(str) !!(((unsigned char*)(str))[-1] & 0x80)  // 0b10000000
 #define STR8_FIELD_SIZE(type) \
     ( \
         (type) == STR8_TYPE1 ? 1 : \
@@ -21,7 +21,7 @@
         0 \
     )
 
-#define STR8_TYPE0_SIZE(str) (size_t)(((char*)str)[-1] >> 3)
+#define STR8_TYPE0_SIZE(str) (size_t)(((unsigned char*)str)[-1] >> 3)
 
 size_t str8len(str8 str);
 size_t str8size(str8 str);
