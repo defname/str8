@@ -63,6 +63,8 @@ void verify_count(const char *s, size_t size, size_t expected, const char *descr
 
 void test_count(void) {
     TEST_ASSERT(simd_active());
+    verify_count("", 0, 0, "Empty String (0 bytes)");
+    verify_count("TEST", 0, 0, "\"TEST\" (0 bytes)");
     verify_count("TEST", 4, 4, "\"TEST\" (4 bytes)");
     verify_count("TEST", 3, 3, "\"TEST\" (3 bytes)");
     verify_count("TES€", 6, 4, "\"TES€\" (6 bytes)");
