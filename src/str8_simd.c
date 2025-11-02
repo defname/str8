@@ -62,7 +62,8 @@ size_t str8_count_chars_simd(const char *str, size_t size) {
     const __m128i mask_80 = _mm_set1_epi8(0x80);
 
     while (i + step <= size) {
-        __m128i chunk = load_bytes_insecure(str + i);
+        // Use a direct, safe load as we are guaranteed to be within `size`.
+        __m128i chunk = _mm_loadu_si128((const __m128i*)(str + i));
         __m128i top_bits = _mm_and_si128(chunk, mask_c0);
         __m128i cont_bytes = _mm_cmpeq_epi8(top_bits, mask_80);
         int mask = _mm_movemask_epi8(cont_bytes);
@@ -82,10 +83,8 @@ size_t str8_count_chars_simd(const char *str, size_t size) {
     const uint8x16_t mask_80 = vdupq_n_u8(0x80);
 
     while (i + step <= size) {
-        if (!is_safe_to_read_16_bytes(str + i)) {
-            break; // Fallback to scalar for remaining bytes
-        }
-        uint8x16_t chunk = load_bytes_insecure(str + i);
+        // Use a direct, safe load as we are guaranteed to be within `size`.
+        uint8x16_t chunk = vld1q_u8((const uint8_t*)(str + i));
         uint8x16_t top_bits = vandq_u8(chunk, mask_c0);
         uint8x16_t cont_bytes_mask = vceqq_u8(top_bits, mask_80);
         uint8x16_t ones_and_zeros = vshrq_n_u8(cont_bytes_mask, 7);
