@@ -71,7 +71,7 @@ void test_checkpoints_list(void) {
     TEST_MSG("Expected list pointer to be %p, but got %p (%ld bytes difference)", mem, list_pointer, diff);
 }
 
-void test_analyze(void) {
+void test_analyze_1(void) {
     char input[1300];
     memset(input, 'A', 1300);
     input[1299] = '\0';
@@ -83,15 +83,37 @@ void test_analyze(void) {
         .byte_offset = 0
     };
     str8_analyze_results results;
-    int error = str8_analyze(input, 1300, config, &results);
+    int error = str8_analyze(input, 0, config, &results);
 
     TEST_CHECK_EQUAL(error, 0, "%d", "error");
     TEST_CHECK_EQUAL(results.list_size, 2LU, "%zu", "list size");
 }
 
+void test_analyze_2(void) {
+    // with list reallocation
+    // more than MAX_2BYTE_INDEX / CHECKPOINTS_GRANULARITY entries are needed
+    // 66000 / 512 = 128.9xx = 128 entries
+    char input[66000];
+    memset(input, 'A', 66000);
+    input[66000] = '\0';
+
+    uint16_t list[MAX_2BYTE_INDEX + 1];
+    str8_analyze_config config = {
+        .list = list,
+        .list_capacity = MAX_2BYTE_INDEX + 1,
+        .byte_offset = 0
+    };
+    str8_analyze_results results;
+    int error = str8_analyze(input, 0, config, &results);
+
+    TEST_CHECK_EQUAL(error, 0, "%d", "error");
+    TEST_CHECK_EQUAL(results.list_size, 128LU, "%zu", "list size");
+}
+
 TEST_LIST = {
     { "Checkpoints Entry Offset", test_checkpoints_entry_offset },
     { "Checkpoints List Pointer", test_checkpoints_list },
-    { "Analyze", test_analyze },
+    { "Analyze 1", test_analyze_1 },
+    { "Analyze 2", test_analyze_2 },
     { NULL, NULL }
 };
