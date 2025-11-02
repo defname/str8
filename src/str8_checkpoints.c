@@ -84,7 +84,7 @@ uint8_t str8_analyze(
     void *list_pointer = results->list;
 
     for (;;) {
-        size_t max_chunk_size = results->size + CHECKPOINTS_GRANULARITY < max_bytes
+        size_t max_chunk_size = max_bytes == 0 || results->size + CHECKPOINTS_GRANULARITY < max_bytes
             ? CHECKPOINTS_GRANULARITY
             : max_bytes - results->size;
         
@@ -105,19 +105,21 @@ uint8_t str8_analyze(
             size_t new_capacity = results->list_capacity * 2;
             void *new_list = NULL;
             if (results->list_created) {
-                new_list = realloc(results->list, new_capacity);
+                new_list = realloc(results->list, checkpoints_entry_offset(new_capacity));
                 if (!new_list) {
                     return 1;
                 }
             }
             else {
-                new_list = malloc(new_capacity);
+                new_list = malloc(checkpoints_entry_offset(new_capacity));
                 if (!new_list) {
                     return 1;
                 }
                 // the initial stack list should always be initiated with
                 // MAX_2BYTE_INDEX uint16_t entries.
-                memcpy(new_list, results->list, checkpoints_entry_offset(results->list_size));
+                // When copying from the initial stack list, we must assume it was
+                // created with fixed-size entries.
+                memcpy(new_list, results->list, results->list_size * sizeof(uint16_t));
                 results->list_created = true;
             }
             results->list = new_list;
