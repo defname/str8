@@ -27,6 +27,7 @@ static const char *utf8_charset[] = { "a", "b", "c", "d", "e", "f", "g", "h", "i
 size_t utf8_charset_size = sizeof(utf8_charset) / sizeof(utf8_charset[0]);
 
 
+__attribute__((unused))
 static char *generate_random_string(const char *charset[], size_t charset_size, size_t length) {
     // Allocate a bit more space to be safe with multi-byte chars
     char *s = (char*)malloc(length + 8);
