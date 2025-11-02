@@ -174,6 +174,42 @@ void test_analyze_4(void) {
     free(input);
 }
 
+void test_read_write(void) {
+    // with list reallocation
+    // more than MAX_2BYTE_INDEX / CHECKPOINTS_GRANULARITY entries are needed
+    // 66000 / 512 = 128.9xx = 128 entries
+    char input[66001];
+    memset(input, 'A', 66001);
+    input[66000] = '\0';
+
+    uint16_t list[MAX_2BYTE_INDEX + 1];
+    str8_analyze_config config = {
+        .list = list,
+        .list_capacity = MAX_2BYTE_INDEX + 1,
+        .byte_offset = 0
+    };
+    str8_analyze_results results;
+    int error = str8_analyze(input, 0, config, &results);
+
+    TEST_CHECK_EQUAL(error, 0, "%d", "error");
+    TEST_CHECK_EQUAL(results.list_size, 128LU, "%zu", "list size");
+
+    for (size_t i=0; i<128LU; i++) {
+        write_entry(results.list, i, i);
+    }
+    for (size_t i=0; i<128LU; i++) {
+        TEST_CHECK_EQUAL(read_entry(results.list, i), i, "%zu", "entry value");
+    }
+    for (size_t i=0; i<128LU; i++) {
+        write_entry(results.list, 128LU-i, i);
+    }
+    for (size_t i=0; i<128LU; i++) {
+        TEST_CHECK_EQUAL(read_entry(results.list, 128LU-i), i, "%zu", "entry value");
+    }
+
+    free(results.list);
+}
+
 TEST_LIST = {
     { "Checkpoints Entry Offset", test_checkpoints_entry_offset },
     { "Checkpoints List Pointer", test_checkpoints_list },
@@ -181,5 +217,6 @@ TEST_LIST = {
     { "Analyze 2", test_analyze_2 },
     { "Analyze 3", test_analyze_3 },
     { "Analyze 4", test_analyze_4 },
+    { "Read Write", test_read_write },
     { NULL, NULL }
 };
