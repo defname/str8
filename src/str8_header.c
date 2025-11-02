@@ -1,7 +1,7 @@
 #include "str8_header.h"
 #include <stdint.h>
 #include "str8_debug.h"
-#include "common/utf8_helper.h"
+#include "str8_simd.h"
 
 /**
  * @brief Get the content of a header field.
@@ -89,7 +89,7 @@ STATIC INLINE void *cap_field(str8 str, uint8_t type) {
 size_t str8len(str8 str) {
     uint8_t type = STR8_TYPE(str);
     if (type == STR8_TYPE0) {
-        return utf8_count_chars(str, STR8_TYPE0_SIZE(str));
+        return str8_count_chars_simd(str, STR8_TYPE0_SIZE(str));
     }
     if (STR8_IS_ASCII(str)) {
         return str8size(str);

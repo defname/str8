@@ -56,6 +56,7 @@ void test_type0(void) {
         TEST_CHECK_EQUAL((unsigned char)mem[0], (31U << 3), "%x", "first byte");
 
         // there is no length field in type 0, so nothing should change
+        str8setsize(str, 0);
         str8setlen(str, 15);
         TEST_CHECK_EQUAL(str8len(str), 0LU, "%zu", "length");
 
