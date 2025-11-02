@@ -1,4 +1,4 @@
-# str8 - UTF-8 sensitive string library
+# str8 - UTF-8 friendly string library
 
 ## Goals
 
