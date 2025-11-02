@@ -369,7 +369,7 @@ reviews:
       enabled: true
 
       # Optional path to the SwiftLint configuration file relative to the repository. This is useful when the configuration file is named differently than the default '.swiftlint.yml' or '.swiftlint.yaml'.
-      config_file: "example-value"
+      # config_file: "example-value"
 
     # PHPStan is a tool to analyze PHP code.
     # Default: {}
