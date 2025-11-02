@@ -117,8 +117,7 @@ void test_analyze_2(void) {
 
 void test_analyze_3(void) {
     // with list reallocation
-    // more than MAX_2BYTE_INDEX / CHECKPOINTS_GRANULARITY entries are needed
-    // 66000 / 512 = 128.9xx = 128 entries
+    // test with input > 4GB
     char *input = malloc(4294967397);
     TEST_ASSERT(input);
     memset(input, 'A', 4294967397);
