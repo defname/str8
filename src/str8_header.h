@@ -11,7 +11,7 @@
 #define STR8_TYPE8  4
 
 #define STR8_TYPE(str) (((unsigned char*)(str))[-1] & 0x07)  // 0b00000111
-#define STR8_IS_ASCII(str) !!(((unsigned char*)(str))[-1] & 0x80)  // 0b10000000
+#define STR8_IS_ASCII(str) !(((unsigned char*)(str))[-1] & 0x80)  // 0b10000000
 #define STR8_FIELD_SIZE(type) \
     ( \
         (type) == STR8_TYPE1 ? 1 : \
