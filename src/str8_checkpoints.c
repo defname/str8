@@ -25,8 +25,9 @@ STATIC INLINE size_t checkpoints_entry_offset(size_t idx) {
  */
 STATIC INLINE void *checkpoints_list(str8 str) {
     uint8_t type = STR8_TYPE(str);
-    size_t max_idx = str8cap(str)/CHECKPOINTS_GRANULARITY;
-    size_t table_bytesize = checkpoints_entry_offset(max_idx + 1);
+    size_t table_count = str8cap(str)/CHECKPOINTS_GRANULARITY;
+    // the list contains an entry for each TABLE_GRANULARITY bytes
+    size_t table_bytesize = checkpoints_entry_offset(table_count);
     return ((char*)str) - (1 + 3 * STR8_FIELD_SIZE(type)) - table_bytesize;
 }
 
@@ -83,7 +84,7 @@ uint8_t str8_analyze(
     void *list_pointer = results->list;
 
     for (;;) {
-        size_t max_chunk_size = results->size + CHECKPOINTS_GRANULARITY < max_bytes
+        size_t max_chunk_size = max_bytes == 0 || results->size + CHECKPOINTS_GRANULARITY < max_bytes
             ? CHECKPOINTS_GRANULARITY
             : max_bytes - results->size;
         
@@ -104,24 +105,30 @@ uint8_t str8_analyze(
             size_t new_capacity = results->list_capacity * 2;
             void *new_list = NULL;
             if (results->list_created) {
-                new_list = realloc(results->list, new_capacity);
+                new_list = realloc(results->list, checkpoints_entry_offset(new_capacity));
                 if (!new_list) {
                     return 1;
                 }
             }
             else {
-                new_list = malloc(new_capacity);
+                new_list = malloc(checkpoints_entry_offset(new_capacity));
                 if (!new_list) {
                     return 1;
                 }
                 // the initial stack list should always be initiated with
                 // MAX_2BYTE_INDEX uint16_t entries.
-                memcpy(new_list, results->list, checkpoints_entry_offset(results->list_size));
+                // When copying from the initial stack list, we must assume it was
+                // created with fixed-size entries.
+                memcpy(new_list, results->list, results->list_size * sizeof(uint16_t));
                 results->list_created = true;
             }
             results->list = new_list;
             results->list_capacity = new_capacity;
             list_pointer = results->list + checkpoints_entry_offset(results->list_size);
+        }
+
+        if (chunk_size < max_chunk_size) {  // NULL byte was found in chunk
+            break;
         }
 
         if (idx <= MAX_2BYTE_INDEX) {
@@ -136,11 +143,7 @@ uint8_t str8_analyze(
             *(uint64_t*)list_pointer = (uint64_t)results->length;
             list_pointer += sizeof(uint64_t);
         }
-        results->list_size++;
-
-        if (chunk_size < max_chunk_size) {  // NULL byte was found in chunk
-            break;
-        }
+        results->list_size++; 
     }
 
     return 0;

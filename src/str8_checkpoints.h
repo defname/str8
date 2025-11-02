@@ -23,7 +23,7 @@
 
 typedef struct {
     void *list;             //< Pointer to existing list of uint16_t entries
-    size_t list_capacity;   //< Capacity of the list (should be MAX_2BYTE_INDEX if it's a temporary list on the stack)
+    size_t list_capacity;   //< Capacity of the list (should be MAX_2BYTE_INDEX + 1 if it's a temporary list on the stack)
     size_t byte_offset;     //< Offset in bytes where the anaylsis should assume to start
 } str8_analyze_config;
 
