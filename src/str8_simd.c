@@ -171,7 +171,7 @@ size_t str8_size_simd(const char *str, size_t max_size) {
     // 1. The architecture is not x86 or AArch64.
     // 2. The SIMD loops finished without finding a null byte.
     // 3. The NEON loop found a chunk with a null byte and broke early.
-    while (max_size == 0 || i < max_size && str[i] != '\0') {
+    while ((max_size == 0 || i < max_size) && str[i] != '\0') {
         i++;
     }
     return i;
