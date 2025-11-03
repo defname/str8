@@ -6,6 +6,8 @@
 #include "src/str8_checkpoints.h"
 #include "src/str8_debug.h"
 #include "src/str8_header.h"
+#include "src/str8.h"
+#include "src/str8_simd.h"
 
 
 void test_checkpoints_entry_offset(void) {
@@ -209,6 +211,117 @@ void test_read_write(void) {
     free(results.list);
 }
 
+void test_find_entry_ub(void) {
+    uint16_t list[100];
+    for (size_t i=0; i<100; i++) {
+        write_entry(list, i, (i+1)*100);
+    }
+    //  idx      0    1          99
+    // list = {100, 200, ..., 10000}
+
+    TEST_CHECK_EQUAL(find_entry_ub(list, 100, 550), 4LU, "%zu", "index");
+    TEST_CHECK_EQUAL(find_entry_ub(list, 100, 0), 100LU, "%zu", "index");
+    TEST_CHECK_EQUAL(find_entry_ub(list, 100, 99), 100LU, "%zu", "index");
+    TEST_CHECK_EQUAL(find_entry_ub(list, 100, 100), 0LU, "%zu", "index");
+    TEST_CHECK_EQUAL(find_entry_ub(list, 100, 199), 0LU, "%zu", "index");
+    TEST_CHECK_EQUAL(find_entry_ub(list, 100, 200), 1LU, "%zu", "index");
+    TEST_CHECK_EQUAL(find_entry_ub(list, 100, 100000000), 99LU, "%zu", "index");
+}
+
+void test_getchar(void) {
+    TEST_CASE("Short string");
+    {
+        const char *s = "Foooobar";
+        str8 str = str8new(s);
+        TEST_CHECK_EQUAL(str8getchar(str, 0), str, "%s", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 1), str+1, "%s", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 6), str+6, "%s", "result");
+        str8free(str);
+    }
+    TEST_CASE("Out-of-bound");
+    {
+        const char *s = "Foooobar";
+        str8 str = str8new(s);
+        TEST_CHECK_EQUAL(str8getchar(str, -1), NULL, "%p", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 8), NULL, "%p", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 10), NULL, "%p", "result");
+        str8free(str);
+    }
+    TEST_CASE("UTF-8");
+    {
+        const char *s = "Fooo€obar";
+        str8 str = str8new(s);
+        TEST_CHECK_EQUAL(str8getchar(str, 0), str, "%s", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 1), str+1, "%s", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 4), str+4, "%s", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 5), str+7, "%s", "result");
+        str8free(str);
+    }
+    TEST_CASE("UTF-8 with list");
+    {
+        char s[10000] = { 0 };
+        memset(s, 'A', 9999);
+        memcpy(s + 100, "€", 3);
+        str8 str = str8new(s);
+
+        void *list = checkpoints_list_ptr(str);
+        TEST_CHECK_EQUAL(read_entry(list, 0), 510LU, "%zu", "list entry");
+        TEST_CHECK_EQUAL(read_entry(list, 1), 510LU + 512LU, "%zu", "list entry");
+        TEST_CHECK_EQUAL(read_entry(list, 13), 510LU + 13 * 512LU, "%zu", "list entry");
+
+        TEST_CHECK_EQUAL(str8getchar(str, 0), str, "%p", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 1), str+1, "%s", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 100), str+100, "%s", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 101), str+103, "%s", "result");
+        str8free(str);
+    }
+    TEST_CASE("UTF-8 with long list");
+    {
+        const size_t size = 65558;
+        char s[size + 1];
+        s[size] = '\0';
+        memset(s, 'A', size);
+        memcpy(s + 100, "€", 3);
+        str8 str = str8new(s);
+
+        void *list = checkpoints_list_ptr(str);
+        TEST_CHECK_EQUAL(read_entry(list, 0), 510LU, "%zu", "list entry");
+        TEST_CHECK_EQUAL(read_entry(list, 1), 510LU + 512LU, "%zu", "list entry");
+        TEST_CHECK_EQUAL(read_entry(list, 13), 510LU + 13 * 512LU, "%zu", "list entry");
+
+        TEST_CHECK_EQUAL(str8getchar(str, 0), str, "%p", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 1), str+1, "%s", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 100), str+100, "%s", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 101), str+103, "%s", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 510), str+512, "%s", "result");
+        TEST_CHECK_EQUAL(str8getchar(str, 511), str+513, "%s", "result");
+
+        TEST_CHECK_EQUAL(str8getchar(str, 65000), str+65002, "%s", "result");
+        str8free(str);
+    }
+}
+
+void check_getchar(const char *s, size_t idx) {
+    str8 str = str8new(s);
+    const char *result = str8getchar(str, idx);
+    const char *check = str8_lookup_idx_simd(str, idx, str8size(str));
+    str8free(str);
+    TEST_CHECK_EQUAL(result, check, "%p", "result");
+}
+
+void test_getchar_random(void) {
+    for (int i=0; i<300; i++) {
+        size_t max_size = rand() % 1000000;
+        char *s = generate_random_string(utf8_charset, utf8_charset_size, max_size);
+        TEST_CASE(s);
+        for (int j=0; j<10; j++) {
+            size_t idx = rand() % (max_size + 1);
+            check_getchar(s, idx);
+        }
+        free(s);
+    }
+}
+
 #ifdef SKIP_LARGE_MEMORY_TESTS
 void dummy(void) {
 }
@@ -226,5 +339,8 @@ TEST_LIST = {
 #endif
     { "Analyze 4", test_analyze_4 },
     { "Read Write", test_read_write },
+    { "Find Entry UB", test_find_entry_ub },
+    { "Get Char", test_getchar },
+    { "Get Char Random", test_getchar_random },
     { NULL, NULL }
 };

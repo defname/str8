@@ -24,6 +24,7 @@ void *checkpoints_list(str8 str);
 void *checkpoints_entry(void *list, size_t idx);
 size_t read_entry(void *list, size_t idx);
 void write_entry(void *list, size_t idx, size_t value);
+size_t find_entry_ub(void *list, size_t list_count, size_t upper_bound);
 
 /* str8_memory.h */
 size_t calc_total_size(uint8_t type, bool ascii, size_t capacity);

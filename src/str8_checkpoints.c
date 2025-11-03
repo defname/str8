@@ -177,3 +177,66 @@ size_t checkpoints_list_total_size(size_t capacity) {
 void *checkpoints_list_ptr(str8 str) {
     return checkpoints_list(str);
 }
+
+/**
+ * @brief Return the list index of the entry with the highest value less upper_bound. 
+ * 
+ * Perform a upper-bound binary search on list.
+ * 
+ * @param list Pointer to the beginn of the list.
+ * @param table_count Number of elements in list.
+ * @param upper_bound The upper bound we are looking for.
+ * @return The index of the ub list entry or table_count if all entries are larger.
+ */
+STATIC size_t find_entry_ub(void *list, size_t list_count, size_t upper_bound) {
+    if (list_count == 0) {
+        return 0;
+    }
+    size_t l = 0;
+    size_t r = list_count;
+    size_t result_idx = list_count;
+    while (l < r) {
+        size_t mid = l + (r - l) / 2;
+        size_t val = read_entry(list, mid);
+        if (val <= upper_bound) {
+            result_idx = mid;
+            l = mid + 1;
+        }
+        else {
+            r = mid;
+        }
+    }
+    return result_idx;
+}
+
+const char *str8getchar(str8 str, size_t idx) {
+    if (idx == 0) {
+        return str;
+    }
+    uint8_t type = STR8_TYPE(str);
+    size_t size = str8size(str);
+    if (idx >= size) {  // since character size >= 1
+        return NULL;
+    }
+    if (type == STR8_TYPE0) {
+        return str8_lookup_idx_simd(str, idx, size);
+    }
+    bool ascii = STR8_IS_ASCII(str);
+    if (ascii) {
+        return str + idx;
+    }
+    if (type == STR8_TYPE1) {  // type 1 does not have a list
+        return str8_lookup_idx_simd(str, idx, size);
+    }
+    void *checkpoints_list = checkpoints_list_ptr(str);
+    size_t list_count = size/CHECKPOINTS_GRANULARITY;
+
+    size_t list_idx = find_entry_ub(checkpoints_list, list_count, idx);
+    size_t byte_pos = 0;
+    size_t idx_offset = 0;
+    if (list_idx < list_count) {
+        byte_pos = (list_idx + 1) * CHECKPOINTS_GRANULARITY;
+        idx_offset = read_entry(checkpoints_list, list_idx);
+    }
+    return str8_lookup_idx_simd(str + byte_pos, idx - idx_offset, size - byte_pos);
+}
