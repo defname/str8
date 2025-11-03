@@ -93,7 +93,7 @@ str8 str8newsize_(const char *str, size_t max_size, str8_allocator alloc) {
     str8_analyze_results results;
 
     int error = str8_analyze(str, max_size, config, &results);
-    if (error != NULL) {
+    if (error != 0) {
         if (results.list_created) {
             free(results.list);
         }
