@@ -15,6 +15,9 @@ size_t count_chars_scalar(const char *s, size_t size) {
 
 #define BENCH_COUNT 1000
 
+volatile size_t sink;
+
+
 int main(void) {
 
     size_t max_strlen = 1000000;
@@ -29,7 +32,7 @@ int main(void) {
         char *s = strings[i];
         size_t size = str8_size_simd(s, max_strlen);
         double t = MEASURE_TIME({
-            count_chars_scalar(s, size);
+            sink = count_chars_scalar(s, size);
         });
         BENCH_UPDATE(count_chars_scalar, t, size);
     }
@@ -42,7 +45,7 @@ int main(void) {
         char *s = strings[i];
         size_t size = str8_size_simd(s, max_strlen);
         double t = MEASURE_TIME({
-            str8_count_chars_simd(s, size);
+            sink = str8_count_chars_simd(s, size);
         });
         BENCH_UPDATE(str8_count_chars_simd, t, size);
     }
