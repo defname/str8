@@ -145,10 +145,31 @@ void test_new_random_long(void) {
     }
 }
 
+void test_grow(void) {
+    const char *s = "TEST";
+    str8 str = str8new(s);
+    str = str8grow(str, 20, false);
+    TEST_CHECK(strcmp(str, "TEST") == 0);
+    TEST_CHECK_EQUAL(str8size(str), 4LU, "%zu", "size");
+    TEST_CHECK_EQUAL(str8cap(str), 20LU, "%zu", "capacity");
+    
+    str = str8grow(str, 100, true);
+    TEST_CHECK_EQUAL(str8size(str), 4LU, "%zu", "size");
+    TEST_CHECK_EQUAL(str8cap(str), 100LU, "%zu", "capacity");
+
+    str = str8grow(str, 10000, false);
+    TEST_CHECK_EQUAL(str8size(str), 4LU, "%zu", "size");
+    TEST_CHECK_EQUAL(str8cap(str), 10000LU, "%zu", "capacity");
+    TEST_CHECK_EQUAL(STR8_IS_ASCII(str), false, "%d", "ASCIII");
+    str8free(str);
+}
+
 TEST_LIST = {
     { "New (simple)", test_new_simple },
     { "New (failed random tests)", test_failed_ranom_tests },
     { "New (random short)", test_new_random_short },
     { "New (random medium)", test_new_random_medium },
+    { "New (random long)", test_new_random_long },
+    { "Grow", test_grow },
     { NULL, NULL }
 };

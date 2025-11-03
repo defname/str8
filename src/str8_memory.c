@@ -134,16 +134,87 @@ str8 str8newsize(const char *str, size_t max_size) {
     return str8newsize_(str, max_size, malloc);
 }
 
+STATIC INLINE void *get_memory_block_start(str8 str) {
+    size_t header_size = calc_header_size(STR8_TYPE(str), STR8_IS_ASCII(str), str8cap(str));
+    return str - header_size;
+}
+
 void str8free_(str8 str, str8_deallocator dealloc) {
     uint8_t type = STR8_TYPE(str);
     if (type == STR8_TYPE0) {
         dealloc(&str[-1]);
         return;
     }
-    size_t header_size = calc_header_size(type, STR8_IS_ASCII(str), str8cap(str));
-    dealloc(str - header_size);
+    void *mem = get_memory_block_start(str);
+    dealloc(mem);
 }
 
 void str8free(str8 str) {
     str8free_(str, free);
+}
+
+str8 str8grow_(str8 str, size_t new_capacity, bool utf8, str8_reallocator realloc) {
+    uint8_t type = STR8_TYPE(str);
+    size_t capacity = str8cap(str);
+    
+    if (new_capacity <= capacity) {
+        return str;
+    }
+
+    uint8_t new_type = type_from_capacity(new_capacity);
+    if (new_type == STR8_TYPE0) {
+        // if a string capacity is increased it's likely that it
+        // happens again, type 0 is insufficient for that
+        new_type = STR8_TYPE1;
+    }
+    bool ascii = STR8_IS_ASCII(str);
+    size_t size = str8size(str);
+    size_t length = size;
+    
+    if (!ascii) {
+        length = str8len(str);
+    }
+
+    size_t header_size = calc_header_size(type, ascii, capacity);
+    size_t new_header_size = calc_header_size(new_type, ascii && !utf8, new_capacity);
+
+    void *mem = get_memory_block_start(str);
+    void *new_mem = realloc(mem, new_header_size + new_capacity + 1);
+    if (!new_mem) {
+        return NULL;
+    }
+
+    // str might be dangling after realloc
+    str = (char*)new_mem + header_size;
+
+    // amount mem needs to be moved to the right, to align correctly
+    // with the new header size
+    size_t memory_diff = new_header_size - calc_header_size(type, ascii, capacity);
+
+    // 1.  The header size did not change, so everything is still in place
+    
+    if (memory_diff == 0) {
+        str8setcap(str, new_capacity);
+        return str;
+    }
+
+    // 2.  The header size changed, so move the string to the correct position
+    
+    memmove(str + memory_diff, str, size + 1);
+    // fix str
+    str += memory_diff;
+    // update fields
+    str[-1] = new_type;
+    if (!ascii || utf8) {
+        str[-1] |= 0x80;
+    }
+    str8setsize(str, size);
+    str8setlen(str, length);
+    str8setcap(str, new_capacity);
+
+    return str;
+}
+
+str8 str8grow(str8 str, size_t new_capacity, bool utf8) {
+    return str8grow_(str, new_capacity, utf8, realloc);
 }

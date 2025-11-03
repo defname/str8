@@ -18,5 +18,6 @@ str8 str8_allocate(uint8_t type, bool ascii, size_t capacity, str8_allocator all
 str8 str8new(const char *str);
 str8 str8newsize(const char *str, size_t max_size);
 void str8free(str8 str);
+str8 str8grow(str8 str, size_t new_capacity, bool utf8);
 
 #endif
