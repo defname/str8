@@ -1,5 +1,6 @@
 #include "str8_header.h"
 #include <stdint.h>
+#include <stdbool.h>
 #include "str8_debug.h"
 #include "str8_simd.h"
 
