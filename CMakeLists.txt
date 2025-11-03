@@ -55,11 +55,20 @@ if(USE_SIMD)
     endif()
 endif()
 
+# Allow user to override CHECKPOINTS_GRANULARITY for benchmarks
+set(CHECKPOINTS_GRANULARITY 512 CACHE STRING "Granularity for UTF-8 character index checkpoints")
+message(STATUS "Using CHECKPOINTS_GRANULARITY: ${CHECKPOINTS_GRANULARITY}")
+
 add_compile_definitions(_XOPEN_SOURCE=700)
 
 file(GLOB_RECURSE str8_SRC CONFIGURE_DEPENDS "src/*.c" "src/*/*.c")
 
 add_library(str8 STATIC ${str8_SRC})
+
+# Add the granularity as a compile definition to the str8 library
+# This makes the -DCHECKPOINTS_GRANULARITY=... CMake variable effective
+target_compile_definitions(str8 PUBLIC "CHECKPOINTS_GRANULARITY=${CHECKPOINTS_GRANULARITY}")
+
 # target_link_libraries(str8 PRIVATE utf8_helper)
 target_include_directories(str8 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
