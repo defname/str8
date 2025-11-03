@@ -200,7 +200,7 @@ const char *str8_lookup_idx_simd(const char *str, size_t idx, size_t max_bytes) 
             int cont_count = 0;
             for(int j=0; j<16; j++) if((mask>>j)&1) cont_count++;
         #endif
-        if (char_count + step - cont_count >= idx) {
+        if (char_count + step - cont_count > idx) {
             break;
         }
         char_count += (step - cont_count);
