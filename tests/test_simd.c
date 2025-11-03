@@ -162,6 +162,7 @@ void check_lookup(const char *s, size_t idx) {
 }
 
 void test_lookup_random(void) {
+    TEST_ASSERT(simd_active());
     for (int i=0; i<100; i++) {
         size_t len = rand() % 1000000;
         char *s = generate_random_string(utf8_charset, utf8_charset_size, len);
