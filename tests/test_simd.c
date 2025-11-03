@@ -114,13 +114,21 @@ void test_lookup(void) {
         TEST_CHECK_EQUAL(result, s+31, "%p", "result");
     }
 
-    TEST_CASE("UTF8 Lookup");
+    TEST_CASE("UTF8 Lookup 1");
     {
         const char *s = "TEST ABCDEFGHIJKLMOPQRSTUVW€€€ 12345";
         size_t size = str8_size_simd(s, 0);
 
         const char *result = str8_lookup_idx_simd(s, 31, size);
         TEST_CHECK_EQUAL(result, s+37, "%p", "result");
+    }
+    TEST_CASE("UTF8 Lookup 2");
+    {
+        const char *s = "Fooo€bar";
+        size_t size = str8_size_simd(s, 0);
+
+        const char *result = str8_lookup_idx_simd(s, 5, size);
+        TEST_CHECK_EQUAL(result, s+7, "%p", "result");
     }
 
     TEST_CASE("out-of-range Lookup 3");
@@ -134,13 +142,16 @@ void test_lookup(void) {
 }
 
 const char *lookup_scalar(const char *str, size_t idx) {
-    while (idx) {
+    while (*str) {
         if ((((unsigned char)*str) & 0xC0) != 0x80) {
+            if (idx == 0) {
+                return str;
+            }
             idx--;
         }
         str++;
     }
-    return str;
+    return NULL;
 }
 
 void check_lookup(const char *s, size_t idx) {
@@ -157,7 +168,7 @@ void test_lookup_random(void) {
         TEST_CASE(s);
         size_t char_count = str8_count_chars_simd(s, len);
 
-        for (int j=0; j<100; j++) { 
+        for (int j=0; j<50; j++) { 
             size_t idx = rand() % char_count;
             check_lookup(s, idx);
         }

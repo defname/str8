@@ -228,16 +228,15 @@ const char *str8_lookup_idx_simd(const char *str, size_t idx, size_t max_bytes) 
 #endif
 
     // --- Scalar Fallback Loop ---
-    while (char_count < idx && i < max_bytes) {
+    while (i < max_bytes) {
         if (((unsigned char)str[i] & 0xC0) != 0x80) {
+            if (char_count == idx) {
+                return str + i;
+            }
             char_count++;
         }
         i++;
     }
-
-    if (char_count == idx) {
-        return str + i;
-    }
     
-    return NULL;
+    return NULL; // Character at idx not found within max_bytes
 }
