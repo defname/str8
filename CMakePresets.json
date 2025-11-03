@@ -9,9 +9,9 @@
     {
       "name": "debug",
       "displayName": "Debug (for GDB)",
-      "description": "Plain debug build with symbols, no sanitizers. Cleans build directory on change.",
+      "description": "Plain debug build with symbols, no sanitizers.",
       "generator": "Ninja",
-      "binaryDir": "build",
+      "binaryDir": "build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
@@ -19,9 +19,9 @@
     {
       "name": "asan",
       "displayName": "ASan (Address Sanitizer)",
-      "description": "Debug build with AddressSanitizer enabled. Cleans build directory on change.",
+      "description": "Debug build with AddressSanitizer enabled.",
       "generator": "Ninja",
-      "binaryDir": "build",
+      "binaryDir": "build/asan",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "ASan"
       }
@@ -29,9 +29,9 @@
     {
       "name": "release",
       "displayName": "Release",
-      "description": "Optimized release build. Cleans build directory on change.",
+      "description": "Optimized release build.",
       "generator": "Ninja",
-      "binaryDir": "build",
+      "binaryDir": "build/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
