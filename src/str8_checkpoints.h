@@ -64,4 +64,8 @@ size_t checkpoints_list_total_size(size_t capacity);
 /** @brief Return a pointer to the begin of the list of str. */
 void *checkpoints_list_ptr(str8 str);
 
+/**
+ * @brief Return a pointer to the first byte of the idx' character.
+ */
+const char *str8getchar(str8 str, size_t idx);
 #endif
