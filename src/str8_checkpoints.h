@@ -54,4 +54,14 @@ uint8_t str8_analyze(
     str8_analyze_config config, 
     str8_analyze_results *results);
 
+/**
+ * @brief Return the number of bytes the list needs.
+ * 
+ * @param capacity The capacity of the string the list is for.
+ */
+size_t checkpoints_list_total_size(size_t capacity);
+
+/** @brief Return a pointer to the begin of the list of str. */
+void *checkpoints_list_ptr(str8 str);
+
 #endif
