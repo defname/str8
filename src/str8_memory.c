@@ -92,11 +92,22 @@ str8 str8newsize_(const char *str, size_t max_size, str8_allocator alloc) {
     };
     str8_analyze_results results;
 
-    str8_analyze(str, max_size, config, &results);
+    int error = str8_analyze(str, max_size, config, &results);
+    if (error != NULL) {
+        if (results.list_created) {
+            free(results.list);
+        }
+        return NULL;
+    }
     uint8_t type = type_from_capacity(results.size);
     bool ascii = (results.length == results.size);
 
     str8 new = str8_allocate(type, ascii, results.size, alloc);
+    if (!new) {
+        if (results.list_created) {
+            free(results.list);
+        }
+    }
     memcpy(new, str, results.size);
     new[results.size] = '\0';
     str8setsize(new, results.size);
