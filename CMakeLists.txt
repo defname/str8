@@ -35,7 +35,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     elseif(CMAKE_BUILD_TYPE STREQUAL "ASan")
         message(STATUS "ASan build: Enabling sanitizers and debug symbols.")
         add_compile_definitions(DEBUG)
-        add_compile_options(-fsanitize=address,leak,undefined -fno-omit-frame-pointer -g -O1)
+        add_compile_options(-fsanitize=address,leak,undefined -fno-omit-frame-pointer -g -O0)
         add_link_options(-fsanitize=address,leak,undefined)
 
     elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
