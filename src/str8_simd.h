@@ -9,7 +9,7 @@
 #include <stddef.h>
 
 /**
- * @brief Calculates the length of a string in bytes, stopping at the first null
+ * @brief Calculate the length of a string in bytes, stop at the first null
  *        terminator or after `max_size` bytes.
  *
  * This is a SIMD-accelerated equivalent of `strnlen`.
@@ -21,7 +21,7 @@
 size_t str8_size_simd(const char *str, size_t max_size);
 
 /**
- * @brief Counts the number of UTF-8 characters in a buffer of a known size.
+ * @brief Count the number of UTF-8 characters in a buffer of a known size.
  *
  * This function assumes the input is valid UTF-8 and counts all bytes that are
  * not continuation bytes.
@@ -31,5 +31,18 @@ size_t str8_size_simd(const char *str, size_t max_size);
  * @return The number of UTF-8 characters.
  */
 size_t str8_count_chars_simd(const char *str, size_t size);
+
+/**
+ * @brief Return a pointer to the idx' character.
+ * 
+ * The function assumes that str is valid UTF-8 and idx is in bound.
+ * All non continuation bytes are counted until idx is reached.
+ * 
+ * @param str The string buffer to count.
+ * @param idx The idx to count up to.
+ * @param max_bytes Maxium number of bytes to iterate through.
+ * @return A pointer to the position in str.
+ */
+const char *str8_lookup_idx_simd(const char *str, size_t idx, size_t max_bytes);
 
 #endif // STR8_SIMD_H

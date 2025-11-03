@@ -87,11 +87,81 @@ void test_count_random(void) {
     }
 }
 
+void test_lookup(void) {
+    TEST_ASSERT(simd_active());
+    TEST_CASE("ASCII Lookup 1");
+    {
+        const char *s = "TEST 12345";
+        size_t size = str8_size_simd(s, 0);
+
+        const char *result = str8_lookup_idx_simd(s, 0, size);
+        TEST_CHECK_EQUAL(result, s, "%p", "result");
+    }
+    TEST_CASE("ASCII Lookup 2");
+    {
+        const char *s = "TEST 12345";
+        size_t size = str8_size_simd(s, 0);
+
+        const char *result = str8_lookup_idx_simd(s, 5, size);
+        TEST_CHECK_EQUAL(result, s+5, "%p", "result");
+    }
+    TEST_CASE("ASCII Lookup 3");
+    {
+        const char *s = "TEST ABCDEFGHIJKLMOPQRSTUVWXYZ 12345";
+        size_t size = str8_size_simd(s, 0);
+
+        const char *result = str8_lookup_idx_simd(s, 31, size);
+        TEST_CHECK_EQUAL(result, s+31, "%p", "result");
+    }
+
+    TEST_CASE("ASCII Lookup 3");
+    {
+        const char *s = "TEST ABCDEFGHIJKLMOPQRSTUVW€€€ 12345";
+        size_t size = str8_size_simd(s, 0);
+
+        const char *result = str8_lookup_idx_simd(s, 31, size);
+        TEST_CHECK_EQUAL(result, s+37, "%p", "result");
+    }
+}
+
+const char *lookup_scalar(const char *str, size_t idx) {
+    while (idx) {
+        if ((((unsigned char)*str) & 0xC0) != 0x80) {
+            idx--;
+        }
+        str++;
+    }
+    return str;
+}
+
+void check_lookup(const char *s, size_t idx) {
+    size_t size = str8_size_simd(s, 0);
+    const char *scalar_result = lookup_scalar(s, idx);
+    const char *simd_result = str8_lookup_idx_simd(s, idx, size);
+    TEST_CHECK_EQUAL(simd_result, scalar_result, "%p", "result");
+}
+
+void test_lookup_random(void) {
+    for (int i=0; i<100; i++) {
+        size_t len = rand() % 1000000;
+        char *s = generate_random_string(utf8_charset, utf8_charset_size, len);
+        TEST_CASE(s);
+        size_t char_count = str8_count_chars_simd(s, len);
+
+        for (int j=0; j<100; j++) { 
+            size_t idx = rand() % char_count;
+            check_lookup(s, idx);
+        }
+        free(s);
+    }
+}
 
 TEST_LIST = {
     { "SIMD: Size", test_size },
     { "SIMD: Size (Random)", test_size_random },
     { "SIMD: Character Count", test_count },
     { "SIMD: Character Count (Random)", test_count_random },
+    { "SIMD: Lookup", test_lookup },
+    { "SIMD: Lookup (Random)", test_lookup_random },
     { NULL, NULL }
 };

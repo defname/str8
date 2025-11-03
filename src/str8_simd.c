@@ -176,3 +176,68 @@ size_t str8_size_simd(const char *str, size_t max_size) {
     }
     return i;
 }
+
+
+const char *str8_lookup_idx_simd(const char *str, size_t idx, size_t max_bytes) {
+    size_t i = 0;
+    size_t char_count = 0;
+    const size_t step = 16;
+
+// --- x86 SSE/AVX Implementation ---
+#if defined(__x86_64__) || defined(_M_X64)
+    const __m128i mask_c0 = _mm_set1_epi8(0xC0);
+    const __m128i mask_80 = _mm_set1_epi8(0x80);
+
+    while (i + step <= max_bytes) {
+        // Use a direct, safe load as we are guaranteed to be within `size`.
+        __m128i chunk = _mm_loadu_si128((const __m128i*)(str + i));
+        __m128i top_bits = _mm_and_si128(chunk, mask_c0);
+        __m128i cont_bytes = _mm_cmpeq_epi8(top_bits, mask_80);
+        int mask = _mm_movemask_epi8(cont_bytes);
+        #ifdef __POPCNT__
+            int cont_count = _mm_popcnt_u32(mask);
+        #else
+            int cont_count = 0;
+            for(int j=0; j<16; j++) if((mask>>j)&1) cont_count++;
+        #endif
+        if (char_count + step - cont_count >= idx) {
+            break;
+        }
+        char_count += (step - cont_count);
+        i += step;
+    }
+
+// --- ARM NEON (AArch64) Implementation ---
+#elif defined(__aarch64__)
+    const uint8x16_t mask_c0 = vdupq_n_u8(0xC0);
+    const uint8x16_t mask_80 = vdupq_n_u8(0x80);
+
+    while (i + step <= max_bytes) {
+        // Use a direct, safe load as we are guaranteed to be within `size`.
+        uint8x16_t chunk = vld1q_u8((const uint8_t*)(str + i));
+        uint8x16_t top_bits = vandq_u8(chunk, mask_c0);
+        uint8x16_t cont_bytes_mask = vceqq_u8(top_bits, mask_80);
+        uint8x16_t ones_and_zeros = vshrq_n_u8(cont_bytes_mask, 7);
+        int cont_count = vaddvq_u8(ones_and_zeros);
+        if (char_count + step - cont_count >= idx) {
+            break;
+        }
+        char_count += (step - cont_count);
+        i += step;
+    }
+#endif
+
+    // --- Scalar Fallback Loop ---
+    while (char_count < idx && i < max_bytes) {
+        if (((unsigned char)str[i] & 0xC0) != 0x80) {
+            char_count++;
+        }
+        i++;
+    }
+
+    if (char_count == idx) {
+        return str + i;
+    }
+    
+    return NULL;
+}
