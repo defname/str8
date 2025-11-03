@@ -114,13 +114,22 @@ void test_lookup(void) {
         TEST_CHECK_EQUAL(result, s+31, "%p", "result");
     }
 
-    TEST_CASE("ASCII Lookup 3");
+    TEST_CASE("UTF8 Lookup");
     {
         const char *s = "TEST ABCDEFGHIJKLMOPQRSTUVW€€€ 12345";
         size_t size = str8_size_simd(s, 0);
 
         const char *result = str8_lookup_idx_simd(s, 31, size);
         TEST_CHECK_EQUAL(result, s+37, "%p", "result");
+    }
+
+    TEST_CASE("out-of-range Lookup 3");
+    {
+        const char *s = "TEST ABCDEFGHIJKLMOPQRSTUVW€€€ 12345";
+        size_t size = str8_size_simd(s, 0);
+
+        const char *result = str8_lookup_idx_simd(s, 100, size);
+        TEST_CHECK_EQUAL(result, NULL, "%p", "result");
     }
 }
 
