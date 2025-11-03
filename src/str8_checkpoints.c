@@ -21,10 +21,13 @@ STATIC INLINE size_t checkpoints_entry_offset(size_t idx) {
 }
 
 /**
- * @brief Return a pointer to the begin of the list.
+ * @brief Return a pointer to the begin of the list or NULL if str has no list.
  */
 STATIC INLINE void *checkpoints_list(str8 str) {
     uint8_t type = STR8_TYPE(str);
+    if (type <= STR8_TYPE1 || STR8_IS_ASCII(str)) {
+        return NULL;
+    }
     size_t table_count = str8cap(str)/CHECKPOINTS_GRANULARITY;
     // the list contains an entry for each TABLE_GRANULARITY bytes
     size_t table_bytesize = checkpoints_entry_offset(table_count);
@@ -165,4 +168,12 @@ uint8_t str8_analyze(
     }
 
     return 0;
+}
+
+size_t checkpoints_list_total_size(size_t capacity) {
+    return checkpoints_entry_offset(capacity/CHECKPOINTS_GRANULARITY);
+}
+
+void *checkpoints_list_ptr(str8 str) {
+    return checkpoints_list(str);
 }

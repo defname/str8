@@ -29,10 +29,14 @@ void verify_size(const char *s, size_t max_size, const char *descr) {
 
 void test_size(void) {
     TEST_ASSERT(simd_active());
+    TEST_CASE("Any length");
+    size_t simd_result = str8_size_simd("fooooo bar blub", 0);
+    size_t scalar_result = strlen("fooooo bar blub");
+    TEST_CHECK_EQUAL(scalar_result, simd_result, "%zu", "size");
+    
     verify_size("TEST", 10, "\"TEST\" (max_size: 10)");
     verify_size("TEST", 4, "\"TEST\" (max_size: 4)");
     verify_size("TEST", 2, "\"TEST\" (max_size: 2)");
-    verify_size("TEST", 0, "\"TEST\" (max_size: 0)");
     verify_size("", 10, "Empty String (max_size: 10)");
 }
 

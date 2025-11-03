@@ -114,7 +114,7 @@ size_t str8_size_simd(const char *str, size_t max_size) {
 #if defined(__x86_64__) || defined(_M_X64)
     const __m128i zero = _mm_setzero_si128();
 
-    while (i + step <= max_size) {
+    while (max_size == 0 || i + step <= max_size) {
         // check if the boundary of a memory page is in reach
         if (!is_safe_to_read_16_bytes(str + i)) {
             if ((unsigned char)str[i] == '\0') {
@@ -144,7 +144,7 @@ size_t str8_size_simd(const char *str, size_t max_size) {
 #elif defined(__aarch64__)
     const uint8x16_t zero = vdupq_n_u8(0);
 
-    while (i + step <= max_size) {
+    while (max_size == 0 || i + step <= max_size) {
         if (!is_safe_to_read_16_bytes(str + i)) {
             if ((unsigned char)str[i] == '\0') {
                 return i;
@@ -171,7 +171,7 @@ size_t str8_size_simd(const char *str, size_t max_size) {
     // 1. The architecture is not x86 or AArch64.
     // 2. The SIMD loops finished without finding a null byte.
     // 3. The NEON loop found a chunk with a null byte and broke early.
-    while (i < max_size && str[i] != '\0') {
+    while ((max_size == 0 || i < max_size) && str[i] != '\0') {
         i++;
     }
     return i;

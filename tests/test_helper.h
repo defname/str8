@@ -9,12 +9,14 @@
     do { \
         TEST_CHECK((val) == (exp)); \
         TEST_MSG("Expected %s to be "format", but got "format, (name), (exp), (val)); \
+        fflush(stderr); \
     } while (0);
 
 #define TEST_CHECK_STR(val, exp) \
     do { \
         TEST_CHECK(strcmp((val), (exp)) == 0); \
         TEST_MSG("Expected to be \"%s\", but got \"%s\"", (exp), (val)); \
+        fflush(stderr); \
     } while (0);
 
 
