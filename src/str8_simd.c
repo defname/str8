@@ -178,6 +178,109 @@ size_t str8_size_simd(const char *str, size_t max_size) {
 }
 
 
+size_t str8_scan_simd(const char *str, size_t max_size, bool *ascii) {
+    size_t i = 0;
+    const size_t step = 16;
+    *ascii = true;
+
+// --- x86 SSE/AVX Implementation ---
+#if defined(__x86_64__) || defined(_M_X64)
+    const __m128i zero = _mm_setzero_si128();
+    const __m128i max_ascii = _mm_set1_epi8(127);
+
+
+
+    while (max_size == 0 || i + step <= max_size) {
+        // check if the boundary of a memory page is in reach
+        if (!is_safe_to_read_16_bytes(str + i)) {
+            if ((unsigned char)str[i] > 127) {
+                *ascii = false;
+            }
+            if ((unsigned char)str[i] == '\0') {
+                return i;
+            }
+            i++;
+            continue;
+        }
+        __m128i chunk = load_bytes_insecure(str + i);
+        __m128i equal_zero = _mm_cmpeq_epi8(chunk, zero);
+
+        if (*ascii) {
+            __m128i not_ascii = _mm_cmpgt_epi8(chunk, max_ascii);
+            int ascii_mask = _mm_movemask_epi8(not_ascii);
+            if (ascii_mask != 0) {
+                *ascii = false;
+            }
+        }
+        
+        int mask = _mm_movemask_epi8(equal_zero);
+
+        if (mask != 0) {
+            // Found a null byte in this chunk. Find its exact index.
+            #ifdef __GNUC__
+                return i + __builtin_ctz(mask);
+            #else
+                unsigned long null_idx;
+                _BitScanForward(&null_idx, mask);
+                return i + null_idx;
+            #endif
+        }
+        i += step;
+    }
+
+// --- ARM NEON (AArch64) Implementation ---
+#elif defined(__aarch64__)
+    const uint8x16_t zero = vdupq_n_u8(0);
+    const uint8x16_t max_ascii = vdupq_n_u8(127);
+
+    while (max_size == 0 || i + step <= max_size) {
+        if (!is_safe_to_read_16_bytes(str + i)) {
+            if ((unsigned char)str[i] > 127) {
+                *ascii = false;
+            }
+            if ((unsigned char)str[i] == '\0') {
+                return i;
+            }
+            i++;
+            continue;
+        }
+        uint8x16_t chunk = load_bytes_insecure(str + i);
+        uint8x16_t equal_zero_mask = vceqq_u8(chunk, zero);
+        uint8x16_t not_ascii_mask = vcgtq_u8(chunk, max_ascii);
+        
+        if (*ascii) {
+            if (vmaxvq_u8(not_ascii_mask) != 0) {
+                *ascii = false;
+            }
+        }
+        
+        // Check if any byte in the mask is non-zero (i.e., 0xFF).
+        // This indicates a null byte was found.
+        if (vmaxvq_u8(equal_zero_mask) != 0) {
+            // Found a null byte, but NEON has no easy `movemask`.
+            // Fall back to a scalar check for this final chunk.
+            break;
+        }
+        i += step;
+    }
+#endif
+
+    // --- Scalar Fallback Loop ---
+    // This part is reached if:
+    // 1. The architecture is not x86 or AArch64.
+    // 2. The SIMD loops finished without finding a null byte.
+    // 3. The NEON loop found a chunk with a null byte and broke early.
+    while ((max_size == 0 || i < max_size) && str[i] != '\0') {
+
+        if ((unsigned char)str[i] > 127) {
+            *ascii = false;
+        }
+
+        i++;
+    }
+    return i;
+}
+
 const char *str8_lookup_idx_simd(const char *str, size_t idx, size_t max_bytes) {
     size_t i = 0;
     size_t char_count = 0;
