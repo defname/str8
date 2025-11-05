@@ -22,21 +22,23 @@
 size_t str8_size_simd(const char *str, size_t max_size);
 
 /**
- * @brief Calculates the length of a string in bytes and simultaneously checks
- *        ob der String nur aus ASCII-Zeichen besteht.
+ * @brief Scans a string to find its length in bytes and the position of the
+ *        first non-ASCII character.
  *
- * This function is a SIMD-accelerated combination of `strnlen` and an
- * ASCII validation. It stops at the first null terminator or after
- * `max_size` bytes have been examined.
+ * This is a SIMD-accelerated function that performs two tasks in a single pass:
+ * 1. It calculates the string length in bytes (like `strnlen`).
+ * 2. It finds the byte offset of the first character with a value > 127.
  *
  * @param str The string to be analyzed.
- * @param max_size The maximum number of bytes to scan. If 0, scans until
- *                 the null terminator.
- * @param ascii A pointer to a boolean value, which is set to `false` if a
- *              non-ASCII character (>127) is found.
- * @return The number of bytes in the string (up to `max_size`).
+ * @param max_size The maximum number of bytes to scan. If 0, scans until the
+ *                 null terminator.
+ * @param first_non_ascii_pos A pointer to a size_t. The caller should initialize
+ *                            this to a sentinel value (e.g., (size_t)-1). If a
+ *                            non-ASCII character is found, this will be updated
+ *                            with its byte position.
+ * @return The number of bytes in the string (its size).
  */
-size_t str8_scan_simd(const char *str, size_t max_size, bool *ascii);
+size_t str8_scan_simd(const char *str, size_t max_size, size_t *first_non_ascii_pos);
 
 
 /**
