@@ -9,6 +9,8 @@
 
 #include "str8_debug.h"
 
+#define STR8_MAX_PREALLOC (1024*1024)
+
 typedef void*(*str8_allocator)(size_t);
 typedef void*(*str8_reallocator)(void *, size_t);
 typedef void(*str8_deallocator)(void *);

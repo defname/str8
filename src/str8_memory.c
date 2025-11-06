@@ -29,7 +29,7 @@ STATIC size_t calc_header_size(uint8_t type, bool ascii, size_t capacity) {
     return size;
 }
 
-void str8init(str8 str, uint8_t type, bool ascii, size_t capacity) {
+STATIC INLINE void str8init(str8 str, uint8_t type, bool ascii, size_t capacity) {
     str[0] = '\0';
     str[-1] = type;
     if (type != STR8_TYPE0 && !ascii) {
@@ -52,7 +52,7 @@ str8 str8_allocate(uint8_t type, bool ascii, size_t capacity, str8_allocator all
     return str;
 }
 
-str8 str8new_type0_(const char *str, size_t size, str8_allocator alloc) {
+STATIC INLINE str8 str8new_type0_(const char *str, size_t size, str8_allocator alloc) {
     str8 new = str8_allocate(STR8_TYPE0, false, size, alloc);
     if (!new) {
         return NULL;
@@ -63,7 +63,7 @@ str8 str8new_type0_(const char *str, size_t size, str8_allocator alloc) {
     return new;
 }
 
-uint8_t type_from_capacity(size_t cap) {
+STATIC INLINE uint8_t type_from_capacity(size_t cap) {
     if (cap <= 31) {
         return STR8_TYPE0;
     }
@@ -79,7 +79,7 @@ uint8_t type_from_capacity(size_t cap) {
     return STR8_TYPE8;
 }
 
-str8 str8newsize_(const char *str, size_t max_size, str8_allocator alloc) {
+STATIC INLINE str8 str8newsize_(const char *str, size_t max_size, str8_allocator alloc) {
     size_t size = str8_size_simd(str, max_size && max_size < 32 ? max_size : 32);
     if (size < 32) {
         return str8new_type0_(str, size, alloc);
@@ -139,7 +139,7 @@ STATIC INLINE void *get_memory_block_start(str8 str) {
     return str - header_size;
 }
 
-void str8free_(str8 str, str8_deallocator dealloc) {
+STATIC INLINE void str8free_(str8 str, str8_deallocator dealloc) {
     uint8_t type = STR8_TYPE(str);
     if (type == STR8_TYPE0) {
         dealloc(&str[-1]);
@@ -153,7 +153,7 @@ void str8free(str8 str) {
     str8free_(str, free);
 }
 
-str8 str8grow_(str8 str, size_t new_capacity, bool utf8, str8_reallocator realloc) {
+STATIC INLINE str8 str8grow_(str8 str, size_t new_capacity, bool utf8, str8_reallocator realloc) {
     uint8_t type = STR8_TYPE(str);
     size_t capacity = str8cap(str);
     
@@ -217,4 +217,10 @@ str8 str8grow_(str8 str, size_t new_capacity, bool utf8, str8_reallocator reallo
 
 str8 str8grow(str8 str, size_t new_capacity, bool utf8) {
     return str8grow_(str, new_capacity, utf8, realloc);
+}
+
+STATIC INLINE size_t calc_cap_with_prealloc(size_t new_size) {
+    size_t realloc = new_size / 2 * 3;
+    realloc = realloc > STR8_MAX_PREALLOC ? STR8_MAX_PREALLOC : realloc;
+    return new_size + realloc;
 }
