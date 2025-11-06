@@ -84,9 +84,12 @@ uint8_t str8_analyze(
     results->length = 0;
     results->list_created = false;
 
-    // The byteoffset is used if the list is created for a string that is
-    // appended to another string. So the the first table entry should
-    // be created earlier, in a way it matches CHECKPOINTS_GRANULARITY
+    // When appending a string, the new checkpoint list must align with the
+    // existing one. Checkpoints are created at intervals of CHECKPOINTS_GRANULARITY.
+    // `byte_offset` is the size of the original string. We calculate how many
+    // bytes are needed in the new string to reach the next checkpoint boundary.
+    // This ensures the new checkpoints maintain the same global grid.
+    // `first_rount_offset` is the remainder, determining the size of the first, partial chunk.
     size_t first_rount_offset = config.byte_offset % CHECKPOINTS_GRANULARITY;
 
     void *list_pointer = results->list + checkpoints_entry_offset(config.list_start_idx);
