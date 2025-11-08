@@ -51,6 +51,47 @@ int main(void) {
     }
     BENCH_PRINT_RESULTS(str8_count_chars_simd, BENCH_COUNT);
 
+    putc('\n', stdout);
+
+    BENCH_DECLARE(strlen);
+    for (int i=0; i<BENCH_COUNT; i++) {
+        char *s = strings[i];
+        size_t size = str8_size_simd(s, max_strlen);
+        double t = MEASURE_TIME({
+            sink = strlen(s);
+        });
+        BENCH_UPDATE(strlen, t, size);
+    }
+    BENCH_PRINT_RESULTS(strlen, BENCH_COUNT);
+
+
+    putc('\n', stdout);
+
+    BENCH_DECLARE(simd_size);
+    for (int i=0; i<BENCH_COUNT; i++) {
+        char *s = strings[i];
+        size_t size = str8_size_simd(s, max_strlen);
+        double t = MEASURE_TIME({
+            sink = str8_size_simd(s, 0);
+        });
+        BENCH_UPDATE(simd_size, t, size);
+    }
+    BENCH_PRINT_RESULTS(simd_size, BENCH_COUNT);
+
+    putc('\n', stdout);
+
+    BENCH_DECLARE(simd_scan);
+    for (int i=0; i<BENCH_COUNT; i++) {
+        char *s = strings[i];
+        size_t size = str8_size_simd(s, max_strlen);
+        size_t first_non_ascii_pos = (size_t)-1;
+        double t = MEASURE_TIME({
+            sink = str8_scan_simd(s, 0, &first_non_ascii_pos);
+        });
+        BENCH_UPDATE(simd_scan, t, size);
+    }
+    BENCH_PRINT_RESULTS(simd_scan, BENCH_COUNT);
+
     for (int i=0; i<BENCH_COUNT; i++) {
         free(strings[i]);
     }

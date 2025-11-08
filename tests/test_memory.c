@@ -138,10 +138,164 @@ void test_new_random_medium(void) {
 void test_new_random_long(void) {
     srand(time(NULL));
     size_t min_size = 10000000;
-    size_t max_size = 1000000000;
+    size_t max_size = 20000000; // Keep it reasonable to avoid excessive memory usage
 
-    for (int i=0; i<10; i++) {
-        check_random(rand()%(max_size-min_size)+min_size);
+    for (int i=0; i<2; i++) {
+        size_t size = rand()%(max_size-min_size)+min_size;
+        char *s = malloc(size + 1);
+        TEST_ASSERT(s != NULL);
+        memset(s, 'A', size);
+        memcpy(s + 5000, "€€€", 9); // Add some UTF-8 chars
+        s[size] = '\0';
+        check_simple(s);
+        free(s);
+    }
+}
+
+void test_grow(void) {
+    const char *s = "TEST";
+    str8 str = str8new(s);
+    str = str8grow(str, 20, false);
+    TEST_CHECK(strcmp(str, "TEST") == 0);
+    TEST_CHECK_EQUAL(str8size(str), 4LU, "%zu", "size");
+    TEST_CHECK_EQUAL(str8cap(str), 20LU, "%zu", "capacity");
+    
+    str = str8grow(str, 100, true);
+    TEST_CHECK_EQUAL(str8size(str), 4LU, "%zu", "size");
+    TEST_CHECK_EQUAL(str8cap(str), 100LU, "%zu", "capacity");
+
+    str = str8grow(str, 10000, false);
+    TEST_CHECK_EQUAL(str8size(str), 4LU, "%zu", "size");
+    TEST_CHECK_EQUAL(str8cap(str), 10000LU, "%zu", "capacity");
+    TEST_CHECK_EQUAL(STR8_IS_ASCII(str), false, "%d", "ASCIII");
+    str8free(str);
+}
+
+
+
+void test_append(void) {
+    TEST_CASE("Type 0 to Type 0 (both ASCII)");
+    {
+        str8 str = str8new("TEST");
+        str = str8append(str, "FOO");
+        TEST_CHECK_EQUAL(str8size(str), 7LU, "%zu", "size");
+        TEST_CHECK_EQUAL(str8cap(str), 10LU, "%zu", "capacity");
+        TEST_CHECK_EQUAL(STR8_TYPE(str), STR8_TYPE1, "%d", "type");
+        TEST_CHECK(strcmp(str, "TESTFOO") == 0);
+        str8free(str);
+    }
+    TEST_CASE("Type1 to Type0 (both ASCII)");
+    {
+        const char *str1 = "TEST";
+        const char *str2 = "FOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO";
+        str8 str = str8new(str1);
+        str = str8append(str, str2);
+        TEST_CHECK_EQUAL(str8size(str), strlen(str1) + strlen(str2), "%zu", "size");
+        TEST_CHECK_EQUAL(STR8_TYPE(str), STR8_TYPE1, "%d", "type");
+        str8free(str);
+    }
+
+    TEST_CASE("Type1 to Type1 (both ASCII)");
+    {
+        const char *str1 = "TESTsdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        const char *str2 = "FOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO";
+        str8 str = str8new(str1);
+        str = str8append(str, str2);
+        TEST_CHECK_EQUAL(str8size(str), strlen(str1) + strlen(str2), "%zu", "size");
+        TEST_CHECK_EQUAL(STR8_TYPE(str), STR8_TYPE1, "%d", "type");
+        str8free(str);
+    }
+
+
+
+    TEST_CASE("Type0 to Type0 (ASCII)");
+    {
+        const char *str1 = "TEST";
+        const char *str2 = "FO€OOOO";
+        str8 str = str8new(str1);
+        str = str8append(str, str2);
+        TEST_CHECK_EQUAL(str8size(str), strlen(str1) + strlen(str2), "%zu", "size");
+        TEST_CHECK_EQUAL(STR8_TYPE(str), STR8_TYPE1, "%d", "type");
+        TEST_CHECK_EQUAL(str8len(str), strlen(str1) + strlen(str2) - 2, "%zu", "length");
+        str8free(str);
+    }
+    TEST_CASE("Type1 to Type0 (ASCII)");
+    {
+        const char *str1 = "TEST";
+        const char *str2 = "FO€OOasjdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddOO";
+        str8 str = str8new(str1);
+        str = str8append(str, str2);
+        TEST_CHECK_EQUAL(str8size(str), strlen(str1) + strlen(str2), "%zu", "size");
+        TEST_CHECK_EQUAL(STR8_TYPE(str), STR8_TYPE1, "%d", "type");
+        TEST_CHECK_EQUAL(str8len(str), strlen(str1) + strlen(str2) - 2, "%zu", "length");
+        str8free(str);
+    }
+    TEST_CASE("Type1 to Type1 -> Type 2");
+    {
+        char *str1 = malloc(201);
+        memset(str1, 'A', 200);
+        str1[200] = '\0';
+        char *str2 = malloc(501);
+        memset(str2, 'B', 500);
+        memcpy(str2, "€", 3);
+        str2[500] = '\0';
+        str8 str = str8new(str1);
+        str = str8append(str, str2);
+        TEST_CHECK_EQUAL(str8size(str), strlen(str1) + strlen(str2), "%zu", "size");
+        TEST_CHECK_EQUAL(STR8_TYPE(str), STR8_TYPE2, "%d", "type");
+        void *list = checkpoints_list_ptr(str);
+        TEST_CHECK(list);
+        TEST_MSG("Expected list not to be NULL.");
+        TEST_CHECK_EQUAL(read_entry(list, 0), 510LU, "%zu", "value");
+        str8free(str);
+        free(str1);
+        free(str2);
+    }
+
+    TEST_CASE("Type1 to Type2 (ASCII) -> Type 2");
+    {
+        char *str1 = malloc(1501);
+        memset(str1, 'A', 1500);
+        str1[1500] = '\0';
+        char *str2 = malloc(501);
+        memset(str2, 'B', 500);
+        memcpy(str2, "€", 3);
+        str2[500] = '\0';
+        str8 str = str8new(str1);
+        str = str8append(str, str2);
+        TEST_CHECK_EQUAL(str8size(str), strlen(str1) + strlen(str2), "%zu", "size");
+        TEST_CHECK_EQUAL(STR8_TYPE(str), STR8_TYPE2, "%d", "type");
+        void *list = checkpoints_list_ptr(str);
+        TEST_CHECK(list);
+        TEST_MSG("Expected list not to be NULL.");
+        TEST_CHECK_EQUAL(read_entry(list, 0), 512LU, "%zu", "value");
+        str8free(str);
+        free(str1);
+        free(str2);
+    }
+
+    TEST_CASE("Type1 to Type2 -> Type 2");
+    {
+        char *str1 = malloc(1501);
+        memset(str1, 'A', 1500);
+        memcpy(str1, "€", 3);
+        str1[1500] = '\0';
+        char *str2 = malloc(501);
+        memset(str2, 'B', 500);
+        memcpy(str2, "€", 3);
+        str2[500] = '\0';
+        str8 str = str8new(str1);
+        str = str8append(str, str2);
+        TEST_CHECK_EQUAL(str8size(str), strlen(str1) + strlen(str2), "%zu", "size");
+        TEST_CHECK_EQUAL(STR8_TYPE(str), STR8_TYPE2, "%d", "type");
+        void *list = checkpoints_list_ptr(str);
+        TEST_CHECK(list);
+        TEST_MSG("Expected list not to be NULL.");
+        TEST_CHECK_EQUAL(read_entry(list, 0), 510LU, "%zu", "value");
+        TEST_CHECK_EQUAL(read_entry(list, 2), 1532LU, "%zu", "value");
+        str8free(str);
+        free(str1);
+        free(str2);
     }
 }
 
@@ -150,5 +304,8 @@ TEST_LIST = {
     { "New (failed random tests)", test_failed_ranom_tests },
     { "New (random short)", test_new_random_short },
     { "New (random medium)", test_new_random_medium },
+    { "New (random long)", test_new_random_long },
+    { "Grow", test_grow },
+    { "Append", test_append },
     { NULL, NULL }
 };

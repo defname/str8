@@ -7,6 +7,7 @@
 #define STR8_SIMD_H
 
 #include <stddef.h>
+#include <stdbool.h>
 
 /**
  * @brief Calculate the length of a string in bytes, stop at the first null
@@ -19,6 +20,26 @@
  * @return The number of bytes in the string, up to `max_size`.
  */
 size_t str8_size_simd(const char *str, size_t max_size);
+
+/**
+ * @brief Scans a string to find its length in bytes and the position of the
+ *        first non-ASCII character.
+ *
+ * This is a SIMD-accelerated function that performs two tasks in a single pass:
+ * 1. It calculates the string length in bytes (like `strnlen`).
+ * 2. It finds the byte offset of the first character with a value > 127.
+ *
+ * @param str The string to be analyzed.
+ * @param max_size The maximum number of bytes to scan. If 0, scans until the
+ *                 null terminator.
+ * @param first_non_ascii_pos A pointer to a size_t. The caller should initialize
+ *                            this to a sentinel value (e.g., (size_t)-1). If a
+ *                            non-ASCII character is found, this will be updated
+ *                            with its byte position.
+ * @return The number of bytes in the string (its size).
+ */
+size_t str8_scan_simd(const char *str, size_t max_size, size_t *first_non_ascii_pos);
+
 
 /**
  * @brief Count the number of UTF-8 characters in a buffer of a known size.

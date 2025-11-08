@@ -79,20 +79,23 @@ uint8_t str8_analyze(
 {
     results->list = config.list;
     results->list_capacity = config.list_capacity;
-    results->list_size = 0;
+    results->list_size = config.list_start_idx;
     results->size = 0;
     results->length = 0;
     results->list_created = false;
 
-    // The byteoffset is used if the list is created for a string that is
-    // appended to another string. So the the first table entry should
-    // be created earlier, in a way it matches CHECKPOINTS_GRANULARITY
-    config.byte_offset %= CHECKPOINTS_GRANULARITY;
+    // When appending a string, the new checkpoint list must align with the
+    // existing one. Checkpoints are created at intervals of CHECKPOINTS_GRANULARITY.
+    // `byte_offset` is the size of the original string. We calculate how many
+    // bytes are needed in the new string to reach the next checkpoint boundary.
+    // This ensures the new checkpoints maintain the same global grid.
+    // `first_rount_offset` is the remainder, determining the size of the first, partial chunk.
+    size_t first_rount_offset = config.byte_offset % CHECKPOINTS_GRANULARITY;
 
-    void *list_pointer = results->list;
+    void *list_pointer = (char*)results->list + checkpoints_entry_offset(config.list_start_idx);
 
     for (;;) {
-        size_t max_chunk_size = CHECKPOINTS_GRANULARITY - config.byte_offset;
+        size_t max_chunk_size = CHECKPOINTS_GRANULARITY - first_rount_offset;
         if (max_bytes != 0) {
             size_t remaining = results->size >= max_bytes ? 0 : max_bytes - results->size;
             if (remaining < max_chunk_size) {
@@ -101,7 +104,7 @@ uint8_t str8_analyze(
         }
         
         // this is needed only for the first iteration
-        config.byte_offset = 0;
+        first_rount_offset = 0;
 
         // max_bytes was reached
         if (max_chunk_size == 0) {
@@ -125,6 +128,10 @@ uint8_t str8_analyze(
 
         // increase the table if necessary
         if (idx == results->list_capacity) {
+            if (config.list_start_idx != 0) {
+                // If an existing table is extended, it cannot be reallocated!
+                return 1;
+            }
             // grow fast to avoid allocations. this is just temporary anyways
             size_t new_capacity = results->list_capacity * 2;
             void *new_list = NULL;
@@ -148,20 +155,20 @@ uint8_t str8_analyze(
             }
             results->list = new_list;
             results->list_capacity = new_capacity;
-            list_pointer = results->list + checkpoints_entry_offset(results->list_size);
+            list_pointer = results->list + checkpoints_entry_offset(results->list_size + config.list_start_idx);
         }
 
         // append the list
         if (idx <= MAX_2BYTE_INDEX) {
-            *(uint16_t*)list_pointer = (uint16_t)results->length;
+            *(uint16_t*)list_pointer = (uint16_t)results->length + config.char_idx_offset;
             list_pointer += sizeof(uint16_t);
         }
         else if (idx <= MAX_4BYTE_INDEX) {
-            *(uint32_t*)list_pointer = (uint32_t)results->length;
+            *(uint32_t*)list_pointer = (uint32_t)results->length + config.char_idx_offset;
             list_pointer += sizeof(uint32_t);
         }
         else {
-            *(uint64_t*)list_pointer = (uint64_t)results->length;
+            *(uint64_t*)list_pointer = (uint64_t)results->length + config.char_idx_offset;
             list_pointer += sizeof(uint64_t);
         }
         results->list_size++; 

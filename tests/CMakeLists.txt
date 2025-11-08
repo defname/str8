@@ -23,21 +23,16 @@ foreach(BENCH_SOURCE_FILE ${BENCH_SOURCES})
     add_executable(${BENCH_NAME} ${BENCH_SOURCE_FILE})
     target_link_libraries(${BENCH_NAME} PRIVATE str8)
 
-    # Configure benchmark executables for high optimization, no sanitizers, no debug info, and with -DDEBUG
+    # Configure benchmark executables for high optimization, no sanitizers, no debug info, and without -DDEBUG
     # This overrides default build type settings for these specific targets.
-    target_compile_options(${BENCH_NAME} PRIVATE -O3 -DDEBUG)
+    target_compile_options(${BENCH_NAME} PRIVATE -O3)
 
-    # Override configuration-specific compile flags to ensure -O3 and -DDEBUG are always used
+    # Override configuration-specific compile flags to ensure -O3 are always used
     # and to effectively remove other flags like -g (debug info) or -fsanitize (sanitizers).
-    set_property(TARGET ${BENCH_NAME} PROPERTY CMAKE_C_FLAGS_DEBUG "-O3 -DDEBUG")
-    set_property(TARGET ${BENCH_NAME} PROPERTY CMAKE_C_FLAGS_RELEASE "-O3 -DDEBUG")
-    set_property(TARGET ${BENCH_NAME} PROPERTY CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -DDEBUG")
-    set_property(TARGET ${BENCH_NAME} PROPERTY CMAKE_C_FLAGS_MINSIZEREL "-O3 -DDEBUG")
-
-    set_property(TARGET ${BENCH_NAME} PROPERTY CMAKE_CXX_FLAGS_DEBUG "-O3 -DDEBUG")
-    set_property(TARGET ${BENCH_NAME} PROPERTY CMAKE_CXX_FLAGS_RELEASE "-O3 -DDEBUG")
-    set_property(TARGET ${BENCH_NAME} PROPERTY CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -DDEBUG")
-    set_property(TARGET ${BENCH_NAME} PROPERTY CMAKE_CXX_FLAGS_MINSIZEREL "-O3 -DDEBUG")
+    set_property(TARGET ${BENCH_NAME} PROPERTY CMAKE_C_FLAGS_DEBUG "-O3")
+    set_property(TARGET ${BENCH_NAME} PROPERTY CMAKE_C_FLAGS_RELEASE "-O3")
+    set_property(TARGET ${BENCH_NAME} PROPERTY CMAKE_C_FLAGS_RELWITHDEBINFO "-O3")
+    set_property(TARGET ${BENCH_NAME} PROPERTY CMAKE_C_FLAGS_MINSIZEREL "-O3")
 
     # Strip all symbols from the executable to ensure no debug information is present
     target_link_options(${BENCH_NAME} PRIVATE -s)

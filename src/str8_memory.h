@@ -9,6 +9,8 @@
 
 #include "str8_debug.h"
 
+#define STR8_MAX_PREALLOC (1024*1024)
+
 typedef void*(*str8_allocator)(size_t);
 typedef void*(*str8_reallocator)(void *, size_t);
 typedef void(*str8_deallocator)(void *);
@@ -18,5 +20,7 @@ str8 str8_allocate(uint8_t type, bool ascii, size_t capacity, str8_allocator all
 str8 str8new(const char *str);
 str8 str8newsize(const char *str, size_t max_size);
 void str8free(str8 str);
+str8 str8grow(str8 str, size_t new_capacity, bool utf8);
+str8 str8append(str8 str, const char *other);
 
 #endif

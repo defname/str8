@@ -50,6 +50,63 @@ void test_size_random(void) {
     }
 }
 
+
+void verify_scan(const char *s, size_t max_size, const char *descr) {
+    TEST_CASE(descr);
+    size_t first_non_ascii_pos = (size_t)-1;
+    size_t simd_result = str8_scan_simd(s, max_size, &first_non_ascii_pos);
+    size_t scalar_result = strnlen(s, max_size);
+    size_t scalar_first_non_ascii_pos = 0;
+    for (;scalar_first_non_ascii_pos<scalar_result && s[scalar_first_non_ascii_pos] && (unsigned char)(s[scalar_first_non_ascii_pos]) < 128; scalar_first_non_ascii_pos++) {}
+    if (scalar_first_non_ascii_pos == scalar_result) {
+        scalar_first_non_ascii_pos = (size_t)-1;
+    }
+    TEST_CHECK_EQUAL(simd_result, scalar_result, "%zu", "size");
+    TEST_CHECK_EQUAL(first_non_ascii_pos, scalar_first_non_ascii_pos, "%zu", "first non-ascii pos");
+}
+
+void test_scan(void) {
+    TEST_ASSERT(simd_active());
+    TEST_CASE("Any length");
+    {
+        size_t first_non_ascii_pos = (size_t)-1;
+        size_t simd_result = str8_scan_simd("fooooo bar blub", 0, &first_non_ascii_pos);
+        size_t scalar_result = strlen("fooooo bar blub");
+        TEST_CHECK_EQUAL(scalar_result, simd_result, "%zu", "size");
+        TEST_CHECK_EQUAL(first_non_ascii_pos, (size_t)-1, "%zu", "first non-ascii pos");
+    }
+    TEST_CASE("Any length with non-ASCII characters");
+    {
+        size_t first_non_ascii_pos = (size_t)-1;
+        size_t simd_result = str8_scan_simd("fooooo€ bar blub", 0, &first_non_ascii_pos);
+        size_t scalar_result = strlen("fooooo€ bar blub");
+        TEST_CHECK_EQUAL(scalar_result, simd_result, "%zu", "size");
+        TEST_CHECK_EQUAL(first_non_ascii_pos, (size_t)6, "%zu", "first non-ascii pos");
+    }
+    TEST_CASE("Any length with non-ASCII characters");
+    {
+        size_t first_non_ascii_pos = (size_t)-1;
+        size_t simd_result = str8_scan_simd("€fooooo€ bar blub", 0, &first_non_ascii_pos);
+        size_t scalar_result = strlen("€fooooo€ bar blub");
+        TEST_CHECK_EQUAL(scalar_result, simd_result, "%zu", "size");
+        TEST_CHECK_EQUAL(first_non_ascii_pos, (size_t)0, "%zu", "first non-ascii pos");
+    }
+    verify_scan("TEST", 10, "\"TEST\" (max_size: 10)");
+    verify_scan("TEST", 4, "\"TEST\" (max_size: 4)");
+    verify_scan("TEST", 2, "\"TEST\" (max_size: 2)");
+    verify_scan("", 10, "Empty String (max_size: 10)");
+}
+
+void test_scan_random(void) {
+    size_t max_str_len = 1000000;
+    TEST_ASSERT(simd_active());
+    for (int i=0; i<100; i++) {
+        char *s = generate_random_string(utf8_charset, utf8_charset_size, rand() % max_str_len);
+        verify_scan(s, max_str_len + 10, s);
+        free(s);
+    }
+}
+
 size_t count_chars_scalar(const char *str, size_t size) {
     size_t char_count = 0;
     for (size_t i=0; i<size; i++) {
@@ -180,6 +237,8 @@ void test_lookup_random(void) {
 TEST_LIST = {
     { "SIMD: Size", test_size },
     { "SIMD: Size (Random)", test_size_random },
+    { "SIMD: Scan", test_scan },
+    { "SIMD: Scan (Random)", test_scan_random },
     { "SIMD: Character Count", test_count },
     { "SIMD: Character Count (Random)", test_count_random },
     { "SIMD: Lookup", test_lookup },
