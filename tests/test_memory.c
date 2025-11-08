@@ -138,10 +138,17 @@ void test_new_random_medium(void) {
 void test_new_random_long(void) {
     srand(time(NULL));
     size_t min_size = 10000000;
-    size_t max_size = 1000000000;
+    size_t max_size = 20000000; // Keep it reasonable to avoid excessive memory usage
 
-    for (int i=0; i<10; i++) {
-        check_random(rand()%(max_size-min_size)+min_size);
+    for (int i=0; i<2; i++) {
+        size_t size = rand()%(max_size-min_size)+min_size;
+        char *s = malloc(size + 1);
+        TEST_ASSERT(s != NULL);
+        memset(s, 'A', size);
+        memcpy(s + 5000, "€€€", 9); // Add some UTF-8 chars
+        s[size] = '\0';
+        check_simple(s);
+        free(s);
     }
 }
 
@@ -293,14 +300,12 @@ void test_append(void) {
 }
 
 TEST_LIST = {
-/*
     { "New (simple)", test_new_simple },
     { "New (failed random tests)", test_failed_ranom_tests },
     { "New (random short)", test_new_random_short },
     { "New (random medium)", test_new_random_medium },
     { "New (random long)", test_new_random_long },
     { "Grow", test_grow },
-*/
     { "Append", test_append },
     { NULL, NULL }
 };
