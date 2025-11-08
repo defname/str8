@@ -224,3 +224,82 @@ STATIC INLINE size_t calc_cap_with_prealloc(size_t new_size) {
     realloc = realloc > STR8_MAX_PREALLOC ? STR8_MAX_PREALLOC : realloc;
     return new_size + realloc;
 }
+
+str8 str8append_(str8 str, const char *other, size_t max_size, str8_reallocator realloc) {
+    if (other == NULL || *other == '\0') {
+        return str;
+    }
+    uint8_t type = STR8_TYPE(str);
+    size_t size = str8size(str);
+    size_t capacity = str8cap(str);
+    size_t free_capacity = capacity - size;
+    bool ascii = STR8_IS_ASCII(str);
+
+    size_t other_first_non_ascii_pos = (size_t)-1;
+    size_t other_size = str8_scan_simd(other, max_size, &other_first_non_ascii_pos);
+
+    size_t new_size = size + other_size;
+    bool new_ascii = ascii && (other_first_non_ascii_pos == (size_t)-1);
+
+    size_t new_capacity = capacity;
+    if (new_size > new_capacity) {
+        new_capacity = calc_cap_with_prealloc(new_size);
+    }
+
+    size_t new_header_size = calc_header_size(type, new_ascii, new_capacity);
+    str8 new = str8grow_(str, new_capacity, new_ascii, realloc);
+    if (!new) {
+        return NULL;
+    }
+
+    memcpy(new + size, other, other_size);
+    new[new_size] = '\0';
+    str8setsize(new, new_size);
+
+    if (STR8_TYPE(new) == STR8_TYPE1) {
+        if (new_ascii) {
+            str8setlen(new, str8_count_chars_simd(new, new_size));
+        }
+        return new;
+    }
+
+    if (!ascii && new_ascii) {
+        // build table for original str
+        for (size_t idx=0; idx<size/CHECKPOINTS_GRANULARITY; idx++) {
+            size_t val = (idx+1) * CHECKPOINTS_GRANULARITY;
+            void *list_entry = checkpoints_list_ptr(new);
+            if (idx <= MAX_2BYTE_INDEX) {
+                *(uint16_t*)list_entry = (uint16_t)val;
+                list_entry += sizeof(uint16_t);
+            }
+            else if (idx <= MAX_4BYTE_INDEX) {
+                *(uint32_t*)list_entry = (uint32_t)val;
+                list_entry += sizeof(uint32_t);
+            }
+            else {
+                *(uint64_t*)list_entry = (uint64_t)val;
+                list_entry += sizeof(uint64_t);
+            }
+        }
+    }
+
+    if (new_ascii) {
+        void *list = checkpoints_list_ptr(new);
+        size_t list_capacity = capacity / CHECKPOINTS_GRANULARITY;
+        str8_analyze_config config = {
+            .list = list,
+            .list_capacity = list_capacity,
+            .byte_offset = size,
+            .list_start_idx = size / CHECKPOINTS_GRANULARITY,
+        };
+        str8_analyze_results results;
+        int error = str8_analyze(other, max_size, config, &results);
+        if (error != 0) {
+            str8free(str);
+            return NULL;
+        }
+        str8setlen(new, results.length);
+    }
+
+    return new;
+}
