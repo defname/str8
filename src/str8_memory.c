@@ -301,7 +301,7 @@ str8 str8append_(str8 str, const char *other, size_t max_size, str8_reallocator 
         str8_analyze_results results;
         int error = str8_analyze(other, max_size, config, &results);
         if (error != 0) {
-            str8free(str);
+            str8free(new);
             return NULL;
         }
         new_length = length + results.length;
