@@ -79,7 +79,7 @@ uint8_t str8_analyze(
 {
     results->list = config.list;
     results->list_capacity = config.list_capacity;
-    results->list_size = 0;
+    results->list_size = config.list_start_idx;
     results->size = 0;
     results->length = 0;
     results->list_created = false;
