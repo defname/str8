@@ -21,5 +21,6 @@ str8 str8new(const char *str);
 str8 str8newsize(const char *str, size_t max_size);
 void str8free(str8 str);
 str8 str8grow(str8 str, size_t new_capacity, bool utf8);
+str8 str8append(str8 str, const char *other);
 
 #endif

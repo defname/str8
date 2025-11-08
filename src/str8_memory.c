@@ -220,7 +220,7 @@ str8 str8grow(str8 str, size_t new_capacity, bool utf8) {
 }
 
 STATIC INLINE size_t calc_cap_with_prealloc(size_t new_size) {
-    size_t realloc = new_size / 2 * 3;
+    size_t realloc = new_size / 2;
     realloc = realloc > STR8_MAX_PREALLOC ? STR8_MAX_PREALLOC : realloc;
     return new_size + realloc;
 }
@@ -302,4 +302,8 @@ str8 str8append_(str8 str, const char *other, size_t max_size, str8_reallocator 
     }
 
     return new;
+}
+
+str8 str8append(str8 str, const char *other) {
+    return str8append_(str, other, 0, realloc);
 }
