@@ -160,15 +160,15 @@ uint8_t str8_analyze(
 
         // append the list
         if (idx <= MAX_2BYTE_INDEX) {
-            *(uint16_t*)list_pointer = (uint16_t)results->length + config.byte_offset;
+            *(uint16_t*)list_pointer = (uint16_t)results->length + config.char_idx_offset;
             list_pointer += sizeof(uint16_t);
         }
         else if (idx <= MAX_4BYTE_INDEX) {
-            *(uint32_t*)list_pointer = (uint32_t)results->length + config.byte_offset;
+            *(uint32_t*)list_pointer = (uint32_t)results->length + config.char_idx_offset;
             list_pointer += sizeof(uint32_t);
         }
         else {
-            *(uint64_t*)list_pointer = (uint64_t)results->length + config.byte_offset;
+            *(uint64_t*)list_pointer = (uint64_t)results->length + config.char_idx_offset;
             list_pointer += sizeof(uint64_t);
         }
         results->list_size++; 
