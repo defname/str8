@@ -92,7 +92,7 @@ uint8_t str8_analyze(
     // `first_rount_offset` is the remainder, determining the size of the first, partial chunk.
     size_t first_rount_offset = config.byte_offset % CHECKPOINTS_GRANULARITY;
 
-    void *list_pointer = results->list + checkpoints_entry_offset(config.list_start_idx);
+    void *list_pointer = (char*)results->list + checkpoints_entry_offset(config.list_start_idx);
 
     for (;;) {
         size_t max_chunk_size = CHECKPOINTS_GRANULARITY - first_rount_offset;
