@@ -12,7 +12,6 @@
 // Include SIMD intrinsics based on architecture
 #if defined(__x86_64__) || defined(_M_X64)
     #include <immintrin.h> // x86 SSE/AVX
-    #define SIMD
 #endif
 
 // Define PAGE_SIZE for the page boundary check
@@ -20,6 +19,44 @@
 #define PAGE_SIZE 4096 // Common page size, can be queried via sysconf(_SC_PAGESIZE)
 #endif
 
+
+static inline __attribute__((always_inline))
+bool is_ascii_scalar(const char *str, size_t size) {
+    const char *end = str + size;
+    for (; str < end; str++) {
+        if (__builtin_expect(*str & 0x80, 0)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+static inline __attribute__((always_inline))
+size_t count_chars_scalar(const char *str, size_t size) {
+    const char *end = str + size;
+    size_t count = 0;
+    for (; str < end; str++) {
+        count += (*str & 0xC0) != 0x80;
+    }
+    return count;
+}
+
+static inline __attribute__((always_inline))
+const char *lookup_idx_scalar(const char *str, size_t size, size_t *char_count, size_t target_idx) {
+    const char *end = str + size;
+    for (; str < end; str++) {
+        if ((*str & 0xC0) != 0x80) {
+            if (*char_count == target_idx) {
+                return str;
+            }
+            (*char_count)++;
+        }
+    }
+    return NULL;
+}
+
+#if defined(__x86_64__) || defined(_M_X64)
 
 /**
  * @brief Align p to n
@@ -40,6 +77,7 @@ __m256i load_bytes_insecure(const char *p) {
     return _mm256_load_si256((const __m256i *)p);
 }
 
+
 /**
  * @brief Check if there is a non-ASCII character in str.
  *
@@ -59,16 +97,6 @@ bool is_ascii_avx2(const char *str, size_t size) {
     return true;
 }
 
-static inline __attribute__((always_inline))
-bool is_ascii_scalar(const char *str, size_t size) {
-    const char *end = str + size;
-    for (; str < end; str++) {
-        if (__builtin_expect(*str & 0x80, 0)) {
-            return false;
-        }
-    }
-    return true;
-}
 
 bool is_ascii(const char *str, size_t size) {
     const char *p = str;
@@ -125,16 +153,6 @@ size_t count_chars_avx2(const char *str, size_t size) {
 }
 
 
-static inline __attribute__((always_inline))
-size_t count_chars_scalar(const char *str, size_t size) {
-    const char *end = str + size;
-    size_t count = 0;
-    for (; str < end; str++) {
-        count += (*str & 0xC0) != 0x80;
-    }
-    return count;
-}
-
 size_t count_chars(const char *str, size_t size) {
     const char *p = str;
     const char * const end = str + size;
@@ -163,21 +181,6 @@ size_t count_chars(const char *str, size_t size) {
 }
 
 
-
-static inline __attribute__((always_inline))
-const char *lookup_idx_scalar(const char *str, size_t size, size_t *char_count, size_t target_idx) {
-    const char *end = str + size;
-    for (; str < end; str++) {
-        if ((*str & 0xC0) != 0x80) {
-            if (*char_count == target_idx) {
-                return str;
-            }
-            (*char_count)++;
-        }
-    }
-    return NULL;
-}
-
 static inline __attribute__((always_inline))
 const char *lookup_idx_avx2(const char *str, size_t size, size_t *char_count, size_t target_idx) {
     const char *end = str + size;
@@ -201,6 +204,7 @@ const char *lookup_idx_avx2(const char *str, size_t size, size_t *char_count, si
     }
     return NULL; // Not found in the SIMD part
 }
+
 
 const char *lookup_idx(const char *str, size_t size, size_t target_idx) {
     const char *p = str;
@@ -236,3 +240,20 @@ const char *lookup_idx(const char *str, size_t size, size_t target_idx) {
         return lookup_idx_scalar(p, end - p, &char_count, target_idx);
     }
 }
+
+#else
+
+bool is_ascii(const char *str, size_t size) {
+    return is_ascii_scalar(str, size);
+}
+
+size_t count_chars(const char *str, size_t size) {
+    return count_chars_scalar(str, size);
+}
+
+const char *lookup_idx(const char *str, size_t size, size_t target_idx) {
+    size_t dummy;
+    return lookup_idx_scalar(str, size, &dummy, target_idx);
+}
+
+#endif
