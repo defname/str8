@@ -90,7 +90,7 @@ STATIC INLINE void *cap_field(str8 str, uint8_t type) {
 size_t str8len(str8 str) {
     uint8_t type = STR8_TYPE(str);
     if (type == STR8_TYPE0) {
-        return str8_count_chars_simd(str, STR8_TYPE0_SIZE(str));
+        return count_chars(str, STR8_TYPE0_SIZE(str));
     }
     if (STR8_IS_ASCII(str)) {
         return str8size(str);

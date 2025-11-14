@@ -112,8 +112,8 @@ uint8_t str8_analyze(
         }
         
         // count size and length of the chunk
-        size_t chunk_size = str8_size_simd(str + results->size, max_chunk_size);
-        size_t chunk_len = str8_count_chars_simd(str + results->size, chunk_size);
+        size_t chunk_size = strnlen(str + results->size, max_chunk_size);
+        size_t chunk_len = count_chars(str + results->size, chunk_size);
 
         // update the results
         results->size += chunk_size;
@@ -226,14 +226,14 @@ const char *str8getchar(str8 str, size_t idx) {
         return NULL;
     }
     if (type == STR8_TYPE0) {
-        return str8_lookup_idx_simd(str, idx, size);
+        return lookup_idx(str, size, idx);
     }
     bool ascii = STR8_IS_ASCII(str);
     if (ascii) {
         return str + idx;
     }
     if (type == STR8_TYPE1) {  // type 1 does not have a list
-        return str8_lookup_idx_simd(str, idx, size);
+        return lookup_idx(str, size, idx);
     }
     void *checkpoints_list = checkpoints_list_ptr(str);
     size_t list_count = size/CHECKPOINTS_GRANULARITY;
@@ -245,5 +245,5 @@ const char *str8getchar(str8 str, size_t idx) {
         byte_pos = (list_idx + 1) * CHECKPOINTS_GRANULARITY;
         idx_offset = read_entry(checkpoints_list, list_idx);
     }
-    return str8_lookup_idx_simd(str + byte_pos, idx - idx_offset, size - byte_pos);
+    return lookup_idx(str + byte_pos, size - byte_pos, idx - idx_offset);
 }

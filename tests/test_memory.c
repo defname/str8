@@ -1,5 +1,6 @@
 #include "acutest.h"
 #include "test_helper.h"
+#include "src/str8.h"
 #include "src/str8_header.h"
 #include "src/str8_checkpoints.h"
 #include "src/str8_memory.h"
@@ -11,8 +12,8 @@ void check_simple(const char *s) {
 
 
     str8 str = str8new(s);
-    size_t size = str8_size_simd(s, 0);
-    size_t length = str8_count_chars_simd(s, size);
+    size_t size = strlen(s);
+    size_t length = count_chars(s, size);
     uint8_t type = type_from_capacity(size);
 
     TEST_CHECK(str);
@@ -84,8 +85,8 @@ void check_random(size_t max_size) {
     TEST_CASE(s);
 
     str8 str = str8new(s);
-    size_t size = str8_size_simd(s, 0);
-    size_t length = str8_count_chars_simd(s, size);
+    size_t size = strlen(s);
+    size_t length = count_chars(s, size);
     uint8_t type = type_from_capacity(size);
 
     TEST_CHECK(str);
@@ -108,7 +109,7 @@ void check_random(size_t max_size) {
             size_t byte_offset = (idx + 1) * CHECKPOINTS_GRANULARITY;
 
             value = read_entry(list, idx);
-            size_t char_count_to_idx = str8_count_chars_simd(s, byte_offset);
+            size_t char_count_to_idx = count_chars(s, byte_offset);
             TEST_CHECK_EQUAL(value, char_count_to_idx, "%zu", "value");
         }
     }

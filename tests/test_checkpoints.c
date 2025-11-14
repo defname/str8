@@ -304,9 +304,9 @@ void test_getchar(void) {
 void check_getchar(const char *s, size_t idx) {
     str8 str = str8new(s);
     const char *result = str8getchar(str, idx);
-    const char *check = str8_lookup_idx_simd(str, idx, str8size(str));
-    str8free(str);
+    const char *check = lookup_idx(str, str8size(str), idx);
     TEST_CHECK_EQUAL(result, check, "%p", "result");
+    str8free(str);
 }
 
 void test_getchar_random(void) {
