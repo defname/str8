@@ -4,7 +4,6 @@
  */
 
 #include "str8_simd.h"
-#include <emmintrin.h>
 #include <string.h> // For strnlen fallback
 #include <stdint.h>
 #include <stdbool.h>
@@ -61,6 +60,7 @@ const char *lookup_idx_scalar(const char *str, size_t size, size_t *char_count, 
 /**
  * @brief Align p to n
  */
+static inline __attribute__((always_inline))
 const char *align_to(const char *p, size_t n) {
     return (const char*)(((uintptr_t)p + n - 1) & ~(n - 1));
 }
