@@ -11,22 +11,6 @@
 // Include SIMD intrinsics based on architecture
 #if defined(__x86_64__) || defined(_M_X64)
     #include <immintrin.h> // x86 SSE/AVX
-    #define SIMD_ACTIVE
-    #define SIMD_TYPE           __m128i
-    #define SIMD_SETZERO        _mm_setzero_si128()
-    #define SIMD_SET(val)       _mm_set1_epi8(val)
-    #define SIMD_LOAD_BYTES(p)  _mm_loadu_si128(p)
-    #define SIMD_CMP_EQ(a, b)   _mm_cmpeq_epi8(a, b)
-    #define SIMD_BIT_AND(a, b)  _mm_and_si128(a, b)
-#elif defined(__aarch64__)
-    #include <arm_neon.h> // 64-bit ARM NEON
-    #define SIMD_ACTIVE
-    #define SIMD_TYPE           uint8x16_t
-    #define SIMD_SETZERO        vdupq_n_u8(0)
-    #define SIMD_SET(val)       vdupq_n_u8(val)
-    #define SIMD_LOAD_BYTES(p)  vld1q_u8(p)
-    #define SIMD_CMP_EQ(a, b)   vceqq_u8(a, b)
-    #define SIMD_BIT_AND(a, b)  vandq_u8(a, b)
 #endif
 
 // Define PAGE_SIZE for the page boundary check
@@ -34,211 +18,242 @@
 #define PAGE_SIZE 4096 // Common page size, can be queried via sysconf(_SC_PAGESIZE)
 #endif
 
-static inline bool is_safe_to_read_16_bytes(const char* p) {
-    uintptr_t addr = (uintptr_t)p;
-    return (addr & ~(PAGE_SIZE - 1)) == ((addr + 15) & ~(PAGE_SIZE - 1));
+
+static inline __attribute__((always_inline))
+bool is_ascii_scalar(const char *str, size_t size) {
+    const char *end = str + size;
+    for (; str < end; str++) {
+        if (__builtin_expect(*str & 0x80, 0)) {
+            return false;
+        }
+    }
+    return true;
 }
 
-#ifdef SIMD_ACTIVE
-__attribute__((__no_sanitize_address__))
-static inline SIMD_TYPE load_bytes_insecure(const char *p) {
-    return SIMD_LOAD_BYTES((const void*)p);
-}
-#endif
 
-size_t str8_count_chars_simd(const char *str, size_t size) {
-    size_t i = 0;
-    size_t char_count = 0;
-    const size_t step = 16;
-
-#ifdef SIMD_ACTIVE
-    const SIMD_TYPE mask_c0 = SIMD_SET(0xC0);
-    const SIMD_TYPE mask_80 = SIMD_SET(0x80);
-
-    while (i + step <= size) {
-        SIMD_TYPE chunk = load_bytes_insecure(str + i);
-        SIMD_TYPE top_bits = SIMD_BIT_AND(chunk, mask_c0);
-        SIMD_TYPE cont_bytes = SIMD_CMP_EQ(top_bits, mask_80);
-        
-        int cont_count = 0;
-    #if defined(__x86_64__) || defined(_M_X64)
-        int mask = _mm_movemask_epi8(cont_bytes);
-        #ifdef __POPCNT__
-            cont_count = _mm_popcnt_u32(mask);
-        #else
-            for(int j=0; j<16; j++) if((mask>>j)&1) cont_count++;
-        #endif
-    #elif defined(__aarch64__)
-        uint8x16_t ones_and_zeros = vshrq_n_u8(cont_bytes, 7);
-        cont_count = vaddvq_u8(ones_and_zeros);
-    #endif
-        char_count += (step - cont_count);
-        i += step;
+static inline __attribute__((always_inline))
+size_t count_chars_scalar(const char *str, size_t size) {
+    const char *end = str + size;
+    size_t count = 0;
+    for (; str < end; str++) {
+        count += (*str & 0xC0) != 0x80;
     }
-#endif
-
-    while (i < size) {
-        if (((unsigned char)str[i] & 0xC0) != 0x80) {
-            char_count++;
-        }
-        i++;
-    }
-    return char_count;
+    return count;
 }
 
-size_t str8_size_simd(const char *str, size_t max_size) {
-    size_t i = 0;
-    const size_t step = 16;
-
-#ifdef SIMD_ACTIVE
-    const SIMD_TYPE zero = SIMD_SETZERO;
-
-    while (max_size == 0 || i + step <= max_size) {
-        if (!is_safe_to_read_16_bytes(str + i)) {
-            if ((unsigned char)str[i] == '\0') { return i; }
-            i++;
-            continue;
-        }
-        
-        SIMD_TYPE chunk = load_bytes_insecure(str + i);
-        SIMD_TYPE equal_zero = SIMD_CMP_EQ(chunk, zero);
-
-    #if defined(__x86_64__) || defined(_M_X64)
-        int mask = _mm_movemask_epi8(equal_zero);
-        if (mask != 0) {
-            #ifdef __GNUC__
-                return i + __builtin_ctz(mask);
-            #else
-                unsigned long null_idx;
-                _BitScanForward(&null_idx, mask);
-                return i + null_idx;
-            #endif
-        }
-    #elif defined(__aarch64__)
-        if (vmaxvq_u8(equal_zero) != 0) {
-            break;
-        }
-    #endif
-        i += step;
-    }
-#endif
-
-    while ((max_size == 0 || i < max_size) && str[i] != '\0') {
-        i++;
-    }
-    return i;
-}
-
-size_t str8_scan_simd(const char *str, size_t max_size, size_t *first_non_ascii_pos) {
-    size_t i = 0;
-    const size_t step = 16;
-
-#ifdef SIMD_ACTIVE
-    const SIMD_TYPE zero = SIMD_SETZERO;
-
-    while (max_size == 0 || i + step <= max_size) {
-        if (!is_safe_to_read_16_bytes(str + i)) {
-            if ((unsigned char)str[i] == '\0') { return i; }
-            if (*first_non_ascii_pos == (size_t)-1 && (unsigned char)str[i] > 127) {
-                *first_non_ascii_pos = i;
+static inline __attribute__((always_inline))
+const char *lookup_idx_scalar(const char *str, size_t size, size_t *char_count, size_t target_idx) {
+    const char *end = str + size;
+    for (; str < end; str++) {
+        if ((*str & 0xC0) != 0x80) {
+            if (*char_count == target_idx) {
+                return str;
             }
-            i++;
-            continue;
+            (*char_count)++;
         }
-        SIMD_TYPE chunk = load_bytes_insecure(str + i);
-
-    #if defined(__x86_64__) || defined(_M_X64)
-        if (*first_non_ascii_pos == (size_t)-1) {
-            int non_ascii_mask = _mm_movemask_epi8(chunk);
-            if (non_ascii_mask != 0) {
-                #ifdef __GNUC__
-                    *first_non_ascii_pos = i + __builtin_ctz(non_ascii_mask);
-                #else
-                    unsigned long index;
-                    _BitScanForward(&index, non_ascii_mask);
-                    *first_non_ascii_pos = i + index;
-                #endif
-            }
-        }
-        
-        SIMD_TYPE equal_zero = SIMD_CMP_EQ(chunk, zero);
-        int zero_mask = _mm_movemask_epi8(equal_zero);
-        if (zero_mask != 0) {
-            #ifdef __GNUC__
-                return i + __builtin_ctz(zero_mask);
-            #else
-                unsigned long index;
-                _BitScanForward(&index, zero_mask);
-                return i + index;
-            #endif
-        }
-    #elif defined(__aarch64__)
-        const SIMD_TYPE non_ascii_bit = SIMD_SET(0x80);
-        SIMD_TYPE non_ascii_bytes = SIMD_BIT_AND(chunk, non_ascii_bit);
-        SIMD_TYPE equal_zero_bytes = SIMD_CMP_EQ(chunk, zero);
-        SIMD_TYPE combined = vorrq_u8(non_ascii_bytes, equal_zero_bytes);
-
-        if (vmaxvq_u8(combined) != 0) {
-            break;
-        }
-    #endif
-        i += step;
     }
-#endif
-
-    while ((max_size == 0 || i < max_size) && str[i] != '\0') {
-        if (*first_non_ascii_pos == (size_t)-1 && (unsigned char)str[i] > 127) {
-            *first_non_ascii_pos = i;
-        }
-        i++;
-    }
-    return i;
-}
-
-const char *str8_lookup_idx_simd(const char *str, size_t idx, size_t max_bytes) {
-    size_t i = 0;
-    size_t char_count = 0;
-    const size_t step = 16;
-
-#ifdef SIMD_ACTIVE
-    const SIMD_TYPE mask_c0 = SIMD_SET(0xC0);
-    const SIMD_TYPE mask_80 = SIMD_SET(0x80);
-
-    while (i + step <= max_bytes) {
-        SIMD_TYPE chunk = load_bytes_insecure(str + i);
-        SIMD_TYPE top_bits = SIMD_BIT_AND(chunk, mask_c0);
-        SIMD_TYPE cont_bytes = SIMD_CMP_EQ(top_bits, mask_80);
-        
-        int cont_count = 0;
-    #if defined(__x86_64__) || defined(_M_X64)
-        int mask = _mm_movemask_epi8(cont_bytes);
-        #ifdef __POPCNT__
-            cont_count = _mm_popcnt_u32(mask);
-        #else
-            for(int j=0; j<16; j++) if((mask>>j)&1) cont_count++;
-        #endif
-    #elif defined(__aarch64__)
-        uint8x16_t ones_and_zeros = vshrq_n_u8(cont_bytes, 7);
-        cont_count = vaddvq_u8(ones_and_zeros);
-    #endif
-
-        if (char_count + step - cont_count > idx) {
-            break;
-        }
-        char_count += (step - cont_count);
-        i += step;
-    }
-#endif
-
-    while (i < max_bytes) {
-        if (((unsigned char)str[i] & 0xC0) != 0x80) {
-            if (char_count == idx) {
-                return str + i;
-            }
-            char_count++;
-        }
-        i++;
-    }
-    
     return NULL;
 }
+
+#if defined(__x86_64__) || defined(_M_X64)
+
+/**
+ * @brief Align p to n
+ */
+static inline __attribute__((always_inline))
+const char *align_to(const char *p, size_t n) {
+    return (const char*)(((uintptr_t)p + n - 1) & ~(n - 1));
+}
+
+
+/**
+ * @brief Read 32 bytes from p. Address sanitizer deactivated for this function!
+ *
+ * p NEED to be aligned correctly to 32 bytes.
+ */
+__attribute__((__no_sanitize_address__))
+static inline __attribute__((always_inline))
+__m256i load_bytes_insecure(const char *p) {
+    return _mm256_load_si256((const __m256i *)p);
+}
+
+
+/**
+ * @brief Check if there is a non-ASCII character in str.
+ *
+ * @param str Pointer to the string to check. Needs to be aligned correctly!
+ * @param size Size in bytes of str (strlen(str)).
+ *
+ * @returns true if there is no non-ASCII character found, false otherwise
+ */
+static inline __attribute__((always_inline))
+bool is_ascii_avx2(const char *str, size_t size) {
+    const char *end = str + size;
+    for (; str < end; str += sizeof(__m256i)) {
+        if (__builtin_expect(_mm256_movemask_epi8(load_bytes_insecure(str)), 0)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+bool is_ascii(const char *str, size_t size) {
+    const char *p = str;
+    const char * const end = str + size;
+    const size_t V = 32;
+
+    // --- Scalar prefix to align p to a 32-byte boundary ---
+    const char *aligned_p = align_to(p, V);
+    if (aligned_p > end) {
+        return is_ascii_scalar(p, end - p);
+    }
+
+    size_t prologue_len = aligned_p - p;
+    if (!is_ascii_scalar(p, prologue_len)) {
+        return false;
+    }
+    p += prologue_len;
+
+    // --- SIMD main loop ---
+    size_t remaining_size = end - p;
+    size_t simd_len = remaining_size & ~(V - 1);
+    if (!is_ascii_avx2(p, simd_len)) return false;
+    p += simd_len;
+
+    // --- Scalar tail ---
+    return is_ascii_scalar(p, end - p);
+}
+
+
+/**
+ * @brief Count the number of characters in str.
+ *
+ * @param str (Aligned!) pointer to the str.
+ * @param size Length of str in bytes.
+ * 
+ * @returns Number of characters in str.
+ */
+static inline __attribute__((always_inline))
+size_t count_chars_avx2(const char *str, size_t size) {
+    const char *end = str + size;
+    size_t continuous_count = 0;
+
+    const __m256i mask_80 = _mm256_set1_epi8((char)0x80); // Bit 7
+    const __m256i mask_C0 = _mm256_set1_epi8((char)0xC0); // Bits 7+6
+
+    for (; str < end; str += sizeof(__m256i)) {
+        __m256i chunk = load_bytes_insecure(str);
+        __m256i top_bits = _mm256_and_si256(chunk, mask_C0);
+        __m256i cont_bytes = _mm256_cmpeq_epi8(top_bits, mask_80);
+        int cont_mask = _mm256_movemask_epi8(cont_bytes);
+        continuous_count += __builtin_popcount(cont_mask);
+    }
+    return size - continuous_count;
+}
+
+
+size_t count_chars(const char *str, size_t size) {
+    const char *p = str;
+    const char * const end = str + size;
+    size_t count = 0;
+    const size_t V = 32;
+
+    // --- Scalar prefix to align p to a 32-byte boundary ---
+    const char *aligned_p = align_to(p, V);
+    if (aligned_p > end) {
+        return count_chars_scalar(str, size);
+    }
+
+    size_t prologue_len = aligned_p - p;
+    count += count_chars_scalar(p, prologue_len);
+    p += prologue_len;
+
+    // --- SIMD main loop ---
+    size_t remaining_size = end - p;
+    size_t simd_len = remaining_size & ~(V - 1);
+    count += count_chars_avx2(p, simd_len);
+    p += simd_len;
+
+    // --- Scalar tail ---
+    count += count_chars_scalar(p, end - p);
+    return count;
+}
+
+
+static inline __attribute__((always_inline))
+const char *lookup_idx_avx2(const char *str, size_t size, size_t *char_count, size_t target_idx) {
+    const char *end = str + size;
+    const size_t step = sizeof(__m256i);
+
+    const __m256i mask_c0 = _mm256_set1_epi8(0xC0);
+    const __m256i mask_80 = _mm256_set1_epi8(0x80);
+
+    for (; str < end; str += step) {
+        __m256i chunk = load_bytes_insecure(str);
+        __m256i top_bits = _mm256_and_si256(chunk, mask_c0);
+        __m256i cont_bytes = _mm256_cmpeq_epi8(top_bits, mask_80);
+        
+        int mask = _mm256_movemask_epi8(cont_bytes);
+        int chars_in_chunk = step - __builtin_popcount(mask);
+
+        if (*char_count + chars_in_chunk > target_idx) {
+            return str; // Return the beginning of the chunk where the char is.
+        }
+        *char_count += chars_in_chunk;
+    }
+    return NULL; // Not found in the SIMD part
+}
+
+
+const char *lookup_idx(const char *str, size_t size, size_t target_idx) {
+    const char *p = str;
+    const char * const end = str + size;
+    size_t char_count = 0;
+    const size_t V = sizeof(__m256i);
+
+    // --- Scalar prefix to align p ---
+    const char *aligned_p = align_to(p, V);
+    if (aligned_p > end) {
+        return lookup_idx_scalar(p, end - p, &char_count, target_idx);
+    }
+
+    size_t prologue_len = aligned_p - p;
+    const char *result = lookup_idx_scalar(p, prologue_len, &char_count, target_idx);
+    if (result) {
+        return result;
+    }
+    p += prologue_len;
+
+    // --- SIMD main loop ---
+    size_t remaining_size = end - p;
+    size_t simd_len = remaining_size & ~(V - 1);
+    const char *chunk_start = lookup_idx_avx2(p, simd_len, &char_count, target_idx);
+    p += simd_len;
+
+    // --- Scalar tail ---
+    if (chunk_start) {
+        // The character is in the chunk found by AVX2. Find exact position.
+        return lookup_idx_scalar(chunk_start, V, &char_count, target_idx);
+    } else {
+        // The character is in the remaining tail.
+        return lookup_idx_scalar(p, end - p, &char_count, target_idx);
+    }
+}
+
+#else
+
+bool is_ascii(const char *str, size_t size) {
+    return is_ascii_scalar(str, size);
+}
+
+size_t count_chars(const char *str, size_t size) {
+    return count_chars_scalar(str, size);
+}
+
+const char *lookup_idx(const char *str, size_t size, size_t target_idx) {
+    size_t char_count = 0;
+    return lookup_idx_scalar(str, size, &char_count, target_idx);
+}
+
+#endif

@@ -10,48 +10,24 @@
 #include <stdbool.h>
 
 /**
- * @brief Calculate the length of a string in bytes, stop at the first null
- *        terminator or after `max_size` bytes.
+ * @brief Check if there is a non-ASCII character in str.
  *
- * This is a SIMD-accelerated equivalent of `strnlen`.
+ * @param str Pointer to the string to check.
+ * @param size Size in bytes of str (strlen(str)).
  *
- * @param str The string to measure.
- * @param max_size The maximum number of bytes to scan.
- * @return The number of bytes in the string, up to `max_size`.
+ * @returns true if there is no non-ASCII character found, false otherwise
  */
-size_t str8_size_simd(const char *str, size_t max_size);
+bool is_ascii(const char *str, size_t size);
 
 /**
- * @brief Scans a string to find its length in bytes and the position of the
- *        first non-ASCII character.
+ * @brief Count the number of characters in str.
  *
- * This is a SIMD-accelerated function that performs two tasks in a single pass:
- * 1. It calculates the string length in bytes (like `strnlen`).
- * 2. It finds the byte offset of the first character with a value > 127.
- *
- * @param str The string to be analyzed.
- * @param max_size The maximum number of bytes to scan. If 0, scans until the
- *                 null terminator.
- * @param first_non_ascii_pos A pointer to a size_t. The caller should initialize
- *                            this to a sentinel value (e.g., (size_t)-1). If a
- *                            non-ASCII character is found, this will be updated
- *                            with its byte position.
- * @return The number of bytes in the string (its size).
+ * @param str pointer to the str.
+ * @param size Length of str in bytes.
+ * 
+ * @returns Number of characters in str.
  */
-size_t str8_scan_simd(const char *str, size_t max_size, size_t *first_non_ascii_pos);
-
-
-/**
- * @brief Count the number of UTF-8 characters in a buffer of a known size.
- *
- * This function assumes the input is valid UTF-8 and counts all bytes that are
- * not continuation bytes.
- *
- * @param str The string buffer to analyze.
- * @param size The exact size of the buffer in bytes.
- * @return The number of UTF-8 characters.
- */
-size_t str8_count_chars_simd(const char *str, size_t size);
+size_t count_chars(const char *str, size_t size);
 
 /**
  * @brief Return a pointer to the idx' character.
@@ -60,10 +36,10 @@ size_t str8_count_chars_simd(const char *str, size_t size);
  * All non continuation bytes are counted until idx is reached.
  * 
  * @param str The string buffer to count.
- * @param idx The idx to count up to.
- * @param max_bytes Maxium number of bytes to iterate through.
- * @return A pointer to the position in str.
+ * @param size The size of the string buffer in bytes.
+ * @param target_idx The character index to look for.
+ * @return A pointer to the position in str, or NULL if not found.
  */
-const char *str8_lookup_idx_simd(const char *str, size_t idx, size_t max_bytes);
+const char *lookup_idx(const char *str, size_t size, size_t target_idx);
 
 #endif // STR8_SIMD_H

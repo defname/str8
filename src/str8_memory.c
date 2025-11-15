@@ -80,7 +80,7 @@ STATIC INLINE uint8_t type_from_capacity(size_t cap) {
 }
 
 STATIC INLINE str8 str8newsize_(const char *str, size_t max_size, str8_allocator alloc) {
-    size_t size = str8_size_simd(str, max_size && max_size < 32 ? max_size : 32);
+    size_t size = strnlen(str, max_size && max_size < 32 ? max_size : 32);
     if (size < 32) {
         return str8new_type0_(str, size, alloc);
     }
@@ -234,11 +234,10 @@ str8 str8append_(str8 str, const char *other, size_t max_size, str8_reallocator 
     bool ascii = STR8_IS_ASCII(str);
     size_t length = str8len(str);
 
-    size_t other_first_non_ascii_pos = (size_t)-1;
-    size_t other_size = str8_scan_simd(other, max_size, &other_first_non_ascii_pos);
+    size_t other_size = max_size ? strnlen(other, max_size) : strlen(other);
 
     size_t new_size = size + other_size;
-    bool new_ascii = ascii && (other_first_non_ascii_pos == (size_t)-1);
+    bool new_ascii = is_ascii(other, other_size);
 
     size_t new_capacity = capacity;
     if (new_size > new_capacity) {
@@ -261,7 +260,7 @@ str8 str8append_(str8 str, const char *other, size_t max_size, str8_reallocator 
 
     if (STR8_TYPE(new) == STR8_TYPE1) {
         if (!new_ascii) {
-            str8setlen(new, str8_count_chars_simd(new, new_size));
+            str8setlen(new, count_chars(new, new_size));
         }
         return new;
     }
