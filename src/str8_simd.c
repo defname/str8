@@ -252,8 +252,8 @@ size_t count_chars(const char *str, size_t size) {
 }
 
 const char *lookup_idx(const char *str, size_t size, size_t target_idx) {
-    size_t dummy;
-    return lookup_idx_scalar(str, size, &dummy, target_idx);
+    size_t char_count = 0;
+    return lookup_idx_scalar(str, size, &char_count, target_idx);
 }
 
 #endif
